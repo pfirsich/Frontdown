@@ -1,5 +1,6 @@
 import os, sys
 
+from collections import OrderedDict
 import fnmatch
 import filecmp
 import importlib.util
@@ -230,19 +231,20 @@ if __name__ == '__main__':
                     actions.append(Action("copy", name=element.path))
 
     # Create the action object
-    actionObject = {
-        "sourceDirectory": config.SOURCE_DIR,
-        "compareDirectory": compareDirectory,
-        "targetDirectory": targetDirectory,
-        "actions": actions,
-    }
+    actionObject = OrderedDict()
+    actionObject["sourceDirectory"] = config.SOURCE_DIR
+    actionObject["compareDirectory"] = compareDirectory
+    actionObject["targetDirectory"] = targetDirectory
+    actionObject["actions"] = actions
+
+    actionJson = json.dumps(actionObject, indent=2)
 
     if config.SAVE_ACTIONFILE:
         # Write the action file
         actionFilePath = os.path.join(metadataDirectory, "actions.json")
         logging.info("Saving the action file to " + actionFilePath)
         with open(actionFilePath, "w") as actionFile:
-            json.dump(actionObject, actionFile, indent=2)
+            actionFile.write(actionJson)
 
         if config.OPEN_ACTIONFILE:
             os.startfile(actionFilePath)
