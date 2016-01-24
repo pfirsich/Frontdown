@@ -2,10 +2,11 @@ import os, sys
 
 import fnmatch
 import filecmp
-import importlib, importlib.util
+import importlib.util
 import json
-import subprocess
 import time
+
+from applyActions import executeActionScript
 
 class File:
     def __init__(self, path, source, target = False):
@@ -237,18 +238,19 @@ if __name__ == '__main__':
     if config.OPEN_ACTIONLIST:
         os.startfile(actionFilePath)
 
-    execActionsReturn = 0
     if config.EXECUTE_ACTIONLIST:
-        # TODO: Maybe not assume python is in the path and rather use something eval-ey?
-        execActionsReturn = subprocess.run(["python", "applyActions.py", actionFilePath]).returncode
+        try:
+            executeActionScript(actionFilePath)
+        except Exception as e:
+            raise
+        else:
+            with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
+                metadata = json.loads(inFile.read())
 
-    if execActionsReturn == 0:
-        metadata = None
-        with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
-            metadata = json.loads(inFile.read())
-        metadata["successful"] = True
-        with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
-            outFile.write(json.dumps(metadata))
+            metadata["successful"] = True
+
+            with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
+                outFile.write(json.dumps(metadata))
 
     if config.DELETE_ACTIONLIST:
         os.remove(actionFilePath)
