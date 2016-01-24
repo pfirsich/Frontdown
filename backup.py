@@ -39,7 +39,7 @@ class Action:
     def __str__(self):
         return json.dumps(self.asDict())
 
-def filesEqual(a, b):
+def filesEq(a, b):
     aStat = os.stat(a)
     bStat = os.stat(b)
 
@@ -52,7 +52,7 @@ def filesEqual(a, b):
             if aStat.st_size != bStat.st_size:
                 break
         elif method == "bytes":
-            if not filecmp.filecmp(a, b, shallow = False):
+            if not filecmp.cmp(a, b, shallow = False):
                 break
     else:
         return True 
@@ -60,7 +60,7 @@ def filesEqual(a, b):
     return False
 
 def log(msgType, msg):
-    prefixes = {'critical': 'CRT', 'error': "ERR", 'warning': "WRN", 'information': "NFO"}
+    prefixes = {'critical': 'CRT', 'error': "ERR", 'warning': "WRN", 'info': "NFO"}
     line = prefixes[msgType] + " - " + msg
     print(line)
     if logFile != None:
@@ -78,35 +78,59 @@ if __name__ == '__main__':
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
 
+    if config.MODE == "hardlink":
+        config.VERSIONED = True
+        config.COMPARE_WITH_LAST_BACKUP = True
+
     # Setup directories
     logFile = None
+    metadataDirectory = config.TARGET_DIR
     targetDirectory = config.TARGET_DIR
     compareDirectory = targetDirectory
-    if config.VERSIONED or config.MODE == "hardlink":
-        targetDirectory = os.path.join(config.TARGET_DIR, time.strftime(config.VERSION_NAME), os.path.basename(config.SOURCE_DIR))
+    if config.VERSIONED:
+        metadataDirectory = os.path.join(config.TARGET_DIR, time.strftime(config.VERSION_NAME))
+
+        suffixNumber = 1
+        while True:
+            try:
+                path = metadataDirectory
+                if suffixNumber > 1: path = path + " #" + str(suffixNumber)
+                os.makedirs(path)
+                metadataDirectory = path
+                break
+            except FileExistsError as e:
+                suffixNumber += 1
+                log("error", "Target Backup directory '" + metadataDirectory + "' already exists. Appending suffix '# " + str(suffixNumber) + "'")
+                
+        # Prepare metadata.json
+        with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
+            outFile.write(json.dumps({'name': os.path.basename(metadataDirectory), 'successful': False, 'created': time.time()}))
+            
+        logFile = os.path.join(metadataDirectory, "log.txt")
+        targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
         compareDirectory = targetDirectory
+        os.makedirs(targetDirectory) # Create the config.SOURCE_DIR folder
 
         oldBackups = []
-        if config.COMPARE_WITH_LAST_BACKUP or config.MODE == "hardlink":
+        if config.COMPARE_WITH_LAST_BACKUP:
             for entry in os.scandir(config.TARGET_DIR):
-                if entry.is_dir():
-                    try:
-                        creationTime = time.strptime(entry.name, config.VERSION_NAME)
-                    except:
-                        continue
-                    oldBackups.append({'time': creationTime, 'path': entry.name})
+                if entry.is_dir() and os.path.join(config.TARGET_DIR, entry.name) != metadataDirectory:
+                    metadataFile = os.path.join(config.TARGET_DIR, entry.name, "metadata.json")
+                    if os.path.isfile(metadataFile):
+                        with open(metadataFile) as inFile:
+                            oldBackups.append(json.loads(inFile.read()))
 
-            if len(oldBackups) > 0:
-                newestBackup = max(oldBackups, key = lambda x: x['time'])
-                compareDirectory = os.path.join(config.TARGET_DIR, newestBackup['path'], os.path.basename(config.SOURCE_DIR))
+            for backup in sorted(oldBackups, key = lambda x: x['created'], reverse = True):
+                if backup["successful"]:
+                    compareDirectory = os.path.join(config.TARGET_DIR, backup['name'], os.path.basename(config.SOURCE_DIR))
+                    break
+                else:
+                    log("error", "It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
 
-        try:
-            os.makedirs(targetDirectory)
-        except FileExistsError as e:
-            # TODO: Pick a new name that is unique (append "#2" or "#n" or something) and throw a warning
-            log("critical", "Target Backup directory '" + targetDirectory + "' already exists. Aborting.")
-
-    logFile = os.path.join(targetDirectory, "..", "log.txt")
+    log("info", "source directory: " + config.SOURCE_DIR)
+    log("info", "metadata directory: " + metadataDirectory)
+    log("info", "target directory: " + targetDirectory)
+    log("info", "compare directory: " + compareDirectory)
 
     # Build a list of all files in source and target
     # TODO: A sorted list of some kind would probably be the best data structure
@@ -200,7 +224,7 @@ if __name__ == '__main__':
                     actions.append(Action("copy", name = element.path))
 
     # Write the action file
-    actionFilePath = os.path.join(targetDirectory, "..", "actions.json")
+    actionFilePath = os.path.join(metadataDirectory, "actions.json")
     with open(actionFilePath, "w") as actionFile:
         actionFile.write('{\n\t"sourceDirectory": "' + config.SOURCE_DIR.encode("unicode_escape").decode("utf-8") + 
                          '",\n\t"compareDirectory": "' + compareDirectory.encode("unicode_escape").decode("utf-8") + 
@@ -214,9 +238,18 @@ if __name__ == '__main__':
     if config.OPEN_ACTIONLIST:
         os.startfile(actionFilePath)
 
+    execActionsReturn = 0
     if config.EXECUTE_ACTIONLIST:
         # TODO: Maybe not assume python is in the path and rather use something eval-ey?
-        subprocess.run(["python", "applyActions.py", actionFilePath])
+        execActionsReturn = subprocess.run(["python", "applyActions.py", actionFilePath]).returncode
+
+    if execActionsReturn == 0:
+        metadata = None
+        with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
+            metadata = json.loads(inFile.read())
+        metadata["successful"] = True
+        with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
+            outFile.write(json.dumps(metadata))
 
     if config.DELETE_ACTIONLIST:
         os.remove(actionFilePath)
