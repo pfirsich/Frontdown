@@ -62,8 +62,8 @@ def filesEq(a, b):
 
 if __name__ == '__main__':
     logger = logging.getLogger()
-    logFormat = logging.Formatter(fmt='%(levelname)-7s %(asctime)-8s.%(msecs)03d: %(message)s', datefmt="%H:%M:%S")
-    
+    logFormat = logging.Formatter(fmt='%(levelname)-8s %(asctime)-8s.%(msecs)03d: %(message)s', datefmt="%H:%M:%S")
+
     stderrHandler = logging.StreamHandler(stream=sys.stderr)
     stderrHandler.setFormatter(logFormat)
     logger.addHandler(stderrHandler)
