@@ -13,7 +13,7 @@ MODE = "hardlink"
 VERSIONED = True
 
 # Uses time.strftime
-VERSION_NAME = "%d.%m.%y"
+VERSION_NAME = "%Y_%m_%d"
 
 # only relevant when VERSIONED = True, will not use the directory writing to
 # In hardlink mode this is True automatically
@@ -36,7 +36,7 @@ CACHE_TARGET_DATA = False
 MOVE_DETECTION = False
 
 # Log level, possible options: "ERROR", "WARNING", "INFO", "DEBUG"
-LOG_LEVEL = "INFO"
+LOG_LEVEL = "DEBUG"
 
 SAVE_ACTIONHTML = True
 OPEN_ACTIONHTML = True
