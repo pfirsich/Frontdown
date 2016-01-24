@@ -49,6 +49,9 @@ def filesEq(a, b):
             elif method == "bytes":
                 if not filecmp.cmp(a, b, shallow = False):
                     break
+            else:
+                logging.critical("Compare method '" + method + "' does not exist")
+                quit()
         else:
             return True
 
@@ -72,10 +75,10 @@ if __name__ == '__main__':
         quit()
 
     if not os.path.isfile(sys.argv[1]):
-        e = FileNotFoundError("Configuration '" + sys.argv[1] + "' does not exist.")
-        logging.exception(e)
-        raise e
-        
+        logging.critical("Configuration '" + sys.argv[1] + "' does not exist.")
+        quit()
+
+    # from here: http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     spec = importlib.util.spec_from_file_location("config", sys.argv[1])
     # TODO: default values for config
     config = importlib.util.module_from_spec(spec)
