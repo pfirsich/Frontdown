@@ -5,8 +5,8 @@ import fnmatch
 import filecmp
 import importlib.util
 import json
-import time
 import logging
+import time
 
 from applyActions import executeActionList
 
