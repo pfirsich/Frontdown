@@ -21,21 +21,14 @@ class File:
             inStr.append("target")
         return self.path + " (" + ",".join(inStr) + ")"
 
-class Action:
-    # Possible actions:
-    # copy (always from source to target),
-    # delete (always in target)
-    # hardlink (always from compare directory to target directory)
-    # rename (always in target) (2-variate) (only needed for move detection)
-    # hardlink2 (alway from compare directory to target directory) (2-variate) (only needed for move detection)
-
-    def __init__(self, actionType, **kwargs):
-        self.type = actionType
-        self.params = kwargs
-
-    def __str__(self):
-        paramStr = ", ".join(map(lambda k_v: '"' + k_v[0] + '": "' + k_v[1].encode("unicode_escape").decode("utf-8") + '"', self.params.items())) 
-        return '{"type": "' + self.type + '", "params": {' + paramStr + '}}'
+# Possible actions:
+# copy (always from source to target),
+# delete (always in target)
+# hardlink (always from compare directory to target directory)
+# rename (always in target) (2-variate) (only needed for move detection)
+# hardlink2 (alway from compare directory to target directory) (2-variate) (only needed for move detection)
+def Action(type, **params):
+    return dict(type=type, params=params)
 
 def filesEq(a, b):
     try:
@@ -200,45 +193,46 @@ if __name__ == '__main__':
     # target\source: ignore
 
     # --- move detection:
-    # The same, except if files in source\target and target\source are equal, don't copy, 
+    # The same, except if files in source\target and target\source are equal, don't copy,
     # but rather hardlink from target\source (old backup) to source\target (new backup)
 
     # copy source\target in every mode
     for element in fileSet:
         if element.source:
             if not element.target:
-                actions.append(Action("copy", name = element.path))
+                actions.append(Action("copy", name=element.path))
 
     if config.MODE == "save" or config.MODE == "mirror":
         for element in fileSet:
             if element.source and element.target:
                 if not filesEq(os.path.join(config.SOURCE_DIR, element.path), os.path.join(compareDirectory, element.path)):
-                    actions.append(Action("copy", name = element.path))
-       
+                    actions.append(Action("copy", name=element.path))
+
     if config.MODE == "mirror":
         if config.COMPARE_WITH_LAST_BACKUP:
             for element in fileSet:
                 if not element.source and element.target:
-                    actions.append(Action("delete", name = element.path))
+                    actions.append(Action("delete", name=element.path))
     elif config.MODE == "hardlink":
         for element in fileSet:
             if element.source and element.target:
                 if filesEq(os.path.join(config.SOURCE_DIR, element.path), os.path.join(compareDirectory, element.path)):
-                    actions.append(Action("hardlink", name = element.path))
+                    actions.append(Action("hardlink", name=element.path))
                 else:
-                    actions.append(Action("copy", name = element.path))
+                    actions.append(Action("copy", name=element.path))
+
+    # Create the action object
+    actionObject = {
+        "sourceDirectory": config.SOURCE_DIR,
+        "compareDirectory": compareDirectory,
+        "targetDirectory": targetDirectory,
+        "actions": actions,
+    }
 
     # Write the action file
     actionFilePath = os.path.join(metadataDirectory, "actions.json")
     with open(actionFilePath, "w") as actionFile:
-        actionFile.write('{\n\t"sourceDirectory": "' + config.SOURCE_DIR.encode("unicode_escape").decode("utf-8") + 
-                         '",\n\t"compareDirectory": "' + compareDirectory.encode("unicode_escape").decode("utf-8") + 
-                         '",\n\t"targetDirectory": "' + targetDirectory.encode("unicode_escape").decode("utf-8") + 
-                         '",\n\t"actions": [\n')
-
-        actionFile.write("\t\t" + ",\n\t\t".join(map(lambda x: str(x), actions)) + "\n")
-
-        actionFile.write('\t]\n}\n')
+        json.dump(actionObject, actionFile, indent=2)
 
     if config.OPEN_ACTIONLIST:
         os.startfile(actionFilePath)
