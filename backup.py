@@ -26,18 +26,16 @@ class Action:
     # copy (always from source to target),
     # delete (always in target)
     # hardlink (always from compare directory to target directory)
-    # rename (always in target) (2-variate)
-    # hardlink2 (alway from compare directory to target directory) (2-variate)
+    # rename (always in target) (2-variate) (only needed for move detection)
+    # hardlink2 (alway from compare directory to target directory) (2-variate) (only needed for move detection)
 
     def __init__(self, actionType, **kwargs):
         self.type = actionType
         self.params = kwargs
 
-    def asDict(self):
-        return {'type': self.type, 'params': self.params}
-
     def __str__(self):
-        return json.dumps(self.asDict())
+        paramStr = ", ".join(map(lambda k_v: '"' + k_v[0] + '": "' + k_v[1].encode("unicode_escape").decode("utf-8") + '"', self.params.items())) 
+        return '{"type": "' + self.type + '", "params": {' + paramStr + '}}'
 
 def filesEq(a, b):
     try:
