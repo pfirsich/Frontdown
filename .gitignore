@@ -2,3 +2,5 @@ __pycache__
 hardlinkbackupTestTarget
 testSource
 testTarget
+BackupTool.sublime-project
+BackupTool.sublime-workspace
