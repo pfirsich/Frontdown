@@ -246,18 +246,16 @@ if __name__ == '__main__':
         os.startfile(actionFilePath)
 
     if config.EXECUTE_ACTIONLIST:
-        try:
-            executeActionScript(actionFilePath)
-        except Exception as e:
-            raise
-        else:
-            with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
-                metadata = json.loads(inFile.read())
+        executeActionScript(actionFilePath)
+        
+        with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
+            metadata = json.loads(inFile.read())
 
-            metadata["successful"] = True
+        metadata["successful"] = True
 
-            with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
-                outFile.write(json.dumps(metadata))
+        with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
+            outFile.write(json.dumps(metadata))
 
+            
     if config.DELETE_ACTIONLIST:
         os.remove(actionFilePath)
