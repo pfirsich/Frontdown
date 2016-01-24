@@ -11,7 +11,7 @@ import time
 from applyActions import executeActionList
 
 class File:
-    def __init__(self, path, source, target = False):
+    def __init__(self, path, *, source, target):
         self.path = path
         self.source = source
         self.target = target
@@ -150,7 +150,7 @@ if __name__ == '__main__':
                 if fnmatch.fnmatch(fullName, exlude):
                     break
             else:
-                fileSet.append(File(fullName, True))
+                fileSet.append(File(fullName, source=True, target=False))
 
     for root, dirs, files in os.walk(compareDirectory):
         relRoot = os.path.relpath(root, compareDirectory)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
                     element.target = True
                     break
             else:
-                fileSet.append(File(fullName, True))
+                fileSet.append(File(fullName, source=False, target=True))
 
     for file in fileSet:
         logging.debug(file)
