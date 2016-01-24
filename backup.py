@@ -73,10 +73,13 @@ def log(msgType, msg):
         quit()
 
 if __name__ == '__main__':
+    logFile = None
     if len(sys.argv) < 2:
-        quit("Please specify the configuration file for your backup.")
+        log("critical", "Please specify the configuration file for your backup.")
 
     # from here: http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+    if not os.path.isfile(sys.argv[1]):
+        log("critical", "Configuration '" + sys.argv[1] + "' does not exist.")
     spec = importlib.util.spec_from_file_location("config", sys.argv[1])
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
@@ -86,7 +89,6 @@ if __name__ == '__main__':
         config.COMPARE_WITH_LAST_BACKUP = True
 
     # Setup directories
-    logFile = None
     metadataDirectory = config.TARGET_DIR
     targetDirectory = config.TARGET_DIR
     compareDirectory = targetDirectory
