@@ -19,7 +19,7 @@ def hardlink(source, link_name):
 
 def executeActionList(actionData):
     logging.info("Apply actions.")
-    
+
     sourceDirectory = actionData["sourceDirectory"]
     compareDirectory = actionData["compareDirectory"]
     targetDirectory = actionData["targetDirectory"]
@@ -53,12 +53,14 @@ def executeActionList(actionData):
         except IOError as e:
             logging.exception(e)
 
+    # TODO: Set successful
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         quit("Please specify an actions file.")
 
     logging.info("Apply action file " + sys.argv[1])
-    
+
     with open(sys.argv[1]) as actionFile:
         actionData = json.loads(actionFile.read())
 

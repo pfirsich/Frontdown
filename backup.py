@@ -70,18 +70,18 @@ if __name__ == '__main__':
         logging.critical("Please specify the configuration file for your backup.")
         quit()
 
-    # from here: http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     if not os.path.isfile(sys.argv[1]):
         e = FileNotFoundError("Configuration '" + sys.argv[1] + "' does not exist.")
         logging.exception(e)
         raise e
         
     spec = importlib.util.spec_from_file_location("config", sys.argv[1])
+    # TODO: default values for config
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
 
     logger.setLevel(config.LOG_LEVEL)
-    
+
     if config.MODE == "hardlink":
         config.VERSIONED = True
         config.COMPARE_WITH_LAST_BACKUP = True
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         fileHandler = logging.FileHandler(os.path.join(metadataDirectory, "log.txt"))
         fileHandler.setFormatter(logFormat)
         logger.addHandler(fileHandler)
-    
+
         targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
         compareDirectory = targetDirectory
         os.makedirs(targetDirectory) # Create the config.SOURCE_DIR folder
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     logging.info("compare directory: " + compareDirectory)
 
     # Build a list of all files in source and target
-    # TODO: A sorted list of some kind would probably be the best data structure
+    # TODO: Include/exclude empty folders
     fileSet = []
     for root, dirs, files in os.walk(config.SOURCE_DIR):
         relRoot = os.path.relpath(root, config.SOURCE_DIR)
