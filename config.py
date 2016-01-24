@@ -6,29 +6,28 @@ EXCLUDE_PATHS = [
 	"*.png"
 ]
 
-# save (not yet implemented), mirror , hardlinks (not yet implemented)
-MODE = "save"
+# save, mirror, hardlinks
+MODE = "hardlink"
 
-# This HAS to be true in Hardlink-Mode
+# In hardlink mode this is True automatically
 VERSIONED = True
 
 # Uses time.strftime
 VERSION_NAME = "%d.%m.%y"
 
 # only relevant when VERSIONED = True, will not use the directory writing to
-# This HAS to be true in Hardlink-Mode
+# In hardlink mode this is True automatically
 COMPARE_WITH_LAST_BACKUP = True
 
 EXECUTE_ACTIONLIST = True
 OPEN_ACTIONLIST = True
 DELETE_ACTIONLIST = False
 
-EXCLUDE_LOG_INFO = False
-EXCLUDE_LOG_WARNING = False
-
 # ordered list of possible elements "moddate", "size", "bytes", "md5" (not yet implemented)
 COMPARE_METHOD = ["moddate", "size", "bytes"]
+
+# Caching not yet implemented
 CACHE_TARGET_DATA = False
 
-# both not implemented
+# Move detection not yet implemented. And I probably never will, since the gain is very small and sometimes even non-existent if the moved files are big enough
 MOVE_DETECTION = False
