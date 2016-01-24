@@ -19,9 +19,12 @@ VERSION_NAME = "%d.%m.%y"
 # In hardlink mode this is True automatically
 COMPARE_WITH_LAST_BACKUP = True
 
-EXECUTE_ACTIONLIST = True
-OPEN_ACTIONLIST = True
-DELETE_ACTIONLIST = False
+SAVE_ACTIONFILE = True
+
+# Opens the action file. Only performed if SAVE_ACTIONFILE = True.
+OPEN_ACTIONFILE = False
+
+APPLY_ACTIONS = True
 
 # ordered list of possible elements "moddate", "size", "bytes", "md5" (not yet implemented)
 COMPARE_METHOD = ["moddate", "size", "bytes"]

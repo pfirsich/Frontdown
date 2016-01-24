@@ -7,7 +7,7 @@ import json
 import time
 import logging
 
-from applyActions import executeActionScript
+from applyActions import executeActionList
 
 class File:
     def __init__(self, path, source, target = False):
@@ -237,16 +237,18 @@ if __name__ == '__main__':
         "actions": actions,
     }
 
-    # Write the action file
-    actionFilePath = os.path.join(metadataDirectory, "actions.json")
-    with open(actionFilePath, "w") as actionFile:
-        json.dump(actionObject, actionFile, indent=2)
+    if config.SAVE_ACTIONFILE:
+        # Write the action file
+        actionFilePath = os.path.join(metadataDirectory, "actions.json")
+        logging.info("Saving the action file to " + actionFilePath)
+        with open(actionFilePath, "w") as actionFile:
+            json.dump(actionObject, actionFile, indent=2)
 
-    if config.OPEN_ACTIONLIST:
-        os.startfile(actionFilePath)
+        if config.OPEN_ACTIONFILE:
+            os.startfile(actionFilePath)
 
-    if config.EXECUTE_ACTIONLIST:
-        executeActionScript(actionFilePath)
+    if config.APPLY_ACTIONS:
+        executeActionList(actionObject)
         
         with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
             metadata = json.loads(inFile.read())
@@ -256,6 +258,3 @@ if __name__ == '__main__':
         with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
             outFile.write(json.dumps(metadata))
 
-            
-    if config.DELETE_ACTIONLIST:
-        os.remove(actionFilePath)

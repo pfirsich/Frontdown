@@ -17,12 +17,9 @@ def hardlink(source, link_name):
     if res == 0:
         raise WinError()
 
-def executeActionScript(actionFilePath):
-    logging.info("Apply " + actionFilePath)
+def executeActionList(actionData):
+    logging.info("Apply actions.")
     
-    with open(actionFilePath) as actionFile:
-        actionData = json.loads(actionFile.read())
-
     sourceDirectory = actionData["sourceDirectory"]
     compareDirectory = actionData["compareDirectory"]
     targetDirectory = actionData["targetDirectory"]
@@ -60,5 +57,10 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         quit("Please specify an actions file.")
 
-    executeActionScript(sys.argv[1])
+    logging.info("Apply action file " + sys.argv[1])
+    
+    with open(sys.argv[1]) as actionFile:
+        actionData = json.loads(actionFile.read())
+
+    executeActionList(actionData)
 
