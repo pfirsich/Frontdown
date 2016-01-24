@@ -9,8 +9,8 @@ import time
 
 class File:
     def __init__(self, path, source, target = False):
-        self.path = path 
-        self.source = source 
+        self.path = path
+        self.source = source
         self.target = target
 
     def __str__(self):
@@ -54,7 +54,7 @@ def filesEq(a, b):
                 if not filecmp.cmp(a, b, shallow = False):
                     break
         else:
-            return True 
+            return True
 
         return False
     except FileNotFoundError as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
@@ -106,11 +106,11 @@ if __name__ == '__main__':
             except FileExistsError as e:
                 suffixNumber += 1
                 log("error", "Target Backup directory '" + metadataDirectory + "' already exists. Appending suffix '# " + str(suffixNumber) + "'")
-                
+
         # Prepare metadata.json
         with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
             outFile.write(json.dumps({'name': os.path.basename(metadataDirectory), 'successful': False, 'created': time.time()}))
-            
+
         logFile = os.path.join(metadataDirectory, "log.txt")
         targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
         compareDirectory = targetDirectory
@@ -170,13 +170,13 @@ if __name__ == '__main__':
     # ============== SAVE
     # Write all files that are in source, but are not already existing in target (in that version)
     # source\target: copy
-    # source&target: 
+    # source&target:
     #   same: ignore
     #   different: copy
     # target\source: ignore
 
     # --- move detection:
-    # The same, except if files in source\target and target\source are equal, don't copy, 
+    # The same, except if files in source\target and target\source are equal, don't copy,
     # but rather rename target\source (old backup) to source\target (new backup)
 
     # ============== MIRROR
@@ -188,10 +188,10 @@ if __name__ == '__main__':
     # target\source: delete
 
     # --- move detection:
-    # The same, except if files in source\target and target\source are equal, don't delete and copy, but rename 
+    # The same, except if files in source\target and target\source are equal, don't delete and copy, but rename
 
 
-    # ============== HARDLINK 
+    # ============== HARDLINK
     # (Attention: here the source is compared against an older backup!)
     # End up with a complete copy of source in target, but have hardlinks to already existing versions in other backups, if it exists
     # source\target: copy
