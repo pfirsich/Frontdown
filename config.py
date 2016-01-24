@@ -31,3 +31,6 @@ CACHE_TARGET_DATA = False
 
 # Move detection not yet implemented. And I probably never will, since the gain is very small and sometimes even non-existent if the moved files are big enough
 MOVE_DETECTION = False
+
+# Log level, possible options: "ERROR", "WARNING", "INFO", "DEBUG"
+LOG_LEVEL = "INFO"

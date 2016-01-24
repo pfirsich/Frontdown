@@ -2,6 +2,7 @@ import os, sys
 
 import json
 import shutil
+import logging
 
 # From here: https://github.com/sid0/ntfs/blob/master/ntfsutils/hardlink.py
 import ctypes
@@ -17,7 +18,7 @@ def hardlink(source, link_name):
         raise WinError()
 
 def executeActionScript(actionFilePath):
-    print("Apply", actionFilePath)
+    logging.info("Apply " + actionFilePath)
     
     with open(actionFilePath) as actionFile:
         actionData = json.loads(actionFile.read())
@@ -26,7 +27,6 @@ def executeActionScript(actionFilePath):
     compareDirectory = actionData["compareDirectory"]
     targetDirectory = actionData["targetDirectory"]
 
-    debug = True
     for action in actionData["actions"]:
         actionType = action["type"]
         params = action["params"]
@@ -34,27 +34,27 @@ def executeActionScript(actionFilePath):
             if actionType == "copy":
                 fromPath = os.path.join(sourceDirectory, params["name"])
                 toPath = os.path.join(targetDirectory, params["name"])
-                if debug: print('copy from "' + fromPath + '" to "' + toPath + '"')
+                logging.debug('copy from "' + fromPath + '" to "' + toPath + '"')
                 toDirectory = os.path.dirname(toPath)
                 if not os.path.isdir(toDirectory):
                     os.makedirs(toDirectory)
                 shutil.copy2(fromPath, toPath)
             elif actionType == "delete":
                 path = os.path.join(targetDirectory, params["name"])
-                if debug: print('delete file "' + path + '"')
+                logging.debug('delete file "' + path + '"')
                 os.remove(path)
             elif actionType == "hardlink":
                 fromPath = os.path.join(compareDirectory, params["name"])
                 toPath = os.path.join(targetDirectory, params["name"])
-                if debug: print('hardlink from "' + fromPath + '" to "' + toPath + '"')
+                logging.debug('hardlink from "' + fromPath + '" to "' + toPath + '"')
                 toDirectory = os.path.dirname(toPath)
                 if not os.path.isdir(toDirectory):
                     os.makedirs(toDirectory)
                 hardlink(fromPath, toPath)
         except OSError as e:
-            print(e)
+            logging.exception(e)
         except IOError as e:
-            print(e)
+            logging.exception(e)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

@@ -5,6 +5,7 @@ import filecmp
 import importlib.util
 import json
 import time
+import logging
 
 from applyActions import executeActionScript
 
@@ -52,32 +53,35 @@ def filesEq(a, b):
 
         return False
     except FileNotFoundError as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
-        log("error", e)
+        logging.exception(e)
         # TODO: Solve this properly
         return True # Mostly when files are equal, nothing happens
 
-def log(msgType, msg):
-    prefixes = {'critical': 'CRT', 'error': "ERR", 'warning': "WRN", 'info': "NFO"}
-    line = prefixes[msgType] + " - " + msg
-    print(line)
-    if logFile != None:
-        with open(logFile, "a") as outFile:
-            outFile.write(line + "\n")
-    if msgType == "critical":
-        quit()
-
 if __name__ == '__main__':
+    logger = logging.getLogger()
+    logFormat = logging.Formatter(fmt='%(levelname)-7s %(asctime)-8s.%(msecs)03d: %(message)s', datefmt="%H:%M:%S")
+    
+    stderrHandler = logging.StreamHandler(stream=sys.stderr)
+    stderrHandler.setFormatter(logFormat)
+    logger.addHandler(stderrHandler)
+
     logFile = None
     if len(sys.argv) < 2:
-        log("critical", "Please specify the configuration file for your backup.")
+        logging.critical("Please specify the configuration file for your backup.")
+        quit()
 
     # from here: http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     if not os.path.isfile(sys.argv[1]):
-        log("critical", "Configuration '" + sys.argv[1] + "' does not exist.")
+        e = FileNotFoundError("Configuration '" + sys.argv[1] + "' does not exist.")
+        logging.exception(e)
+        raise e
+        
     spec = importlib.util.spec_from_file_location("config", sys.argv[1])
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
 
+    logger.setLevel(config.LOG_LEVEL)
+    
     if config.MODE == "hardlink":
         config.VERSIONED = True
         config.COMPARE_WITH_LAST_BACKUP = True
@@ -99,13 +103,16 @@ if __name__ == '__main__':
                 break
             except FileExistsError as e:
                 suffixNumber += 1
-                log("error", "Target Backup directory '" + metadataDirectory + "' already exists. Appending suffix '# " + str(suffixNumber) + "'")
+                logging.error("Target Backup directory '" + metadataDirectory + "' already exists. Appending suffix '# " + str(suffixNumber) + "'")
 
         # Prepare metadata.json
         with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
             outFile.write(json.dumps({'name': os.path.basename(metadataDirectory), 'successful': False, 'created': time.time()}))
 
-        logFile = os.path.join(metadataDirectory, "log.txt")
+        fileHandler = logging.FileHandler(os.path.join(metadataDirectory, "log.txt"))
+        fileHandler.setFormatter(logFormat)
+        logger.addHandler(fileHandler)
+    
         targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
         compareDirectory = targetDirectory
         os.makedirs(targetDirectory) # Create the config.SOURCE_DIR folder
@@ -124,12 +131,12 @@ if __name__ == '__main__':
                     compareDirectory = os.path.join(config.TARGET_DIR, backup['name'], os.path.basename(config.SOURCE_DIR))
                     break
                 else:
-                    log("error", "It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
+                    logging.error("It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
 
-    log("info", "source directory: " + config.SOURCE_DIR)
-    log("info", "metadata directory: " + metadataDirectory)
-    log("info", "target directory: " + targetDirectory)
-    log("info", "compare directory: " + compareDirectory)
+    logging.info("source directory: " + config.SOURCE_DIR)
+    logging.info("metadata directory: " + metadataDirectory)
+    logging.info("target directory: " + targetDirectory)
+    logging.info("compare directory: " + compareDirectory)
 
     # Build a list of all files in source and target
     # TODO: A sorted list of some kind would probably be the best data structure
@@ -155,8 +162,8 @@ if __name__ == '__main__':
             else:
                 fileSet.append(File(fullName, True))
 
-    for e in fileSet:
-        print(e)
+    for file in fileSet:
+        logging.debug(file)
 
     # Determine what to do with these files
     actions = []
