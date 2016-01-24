@@ -40,24 +40,29 @@ class Action:
         return json.dumps(self.asDict())
 
 def filesEq(a, b):
-    aStat = os.stat(a)
-    bStat = os.stat(b)
+    try:
+        aStat = os.stat(a)
+        bStat = os.stat(b)
 
-    equal = True
-    for method in config.COMPARE_METHOD:
-        if method == "moddate":
-            if aStat.st_mtime != bStat.st_mtime:
-                break
-        elif method == "size":
-            if aStat.st_size != bStat.st_size:
-                break
-        elif method == "bytes":
-            if not filecmp.cmp(a, b, shallow = False):
-                break
-    else:
-        return True 
+        equal = True
+        for method in config.COMPARE_METHOD:
+            if method == "moddate":
+                if aStat.st_mtime != bStat.st_mtime:
+                    break
+            elif method == "size":
+                if aStat.st_size != bStat.st_size:
+                    break
+            elif method == "bytes":
+                if not filecmp.cmp(a, b, shallow = False):
+                    break
+        else:
+            return True 
 
-    return False
+        return False
+    except FileNotFoundError as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
+        log("error", e)
+        # TODO: Solve this properly
+        return True # Mostly when files are equal, nothing happens
 
 def log(msgType, msg):
     prefixes = {'critical': 'CRT', 'error': "ERR", 'warning': "WRN", 'info': "NFO"}
