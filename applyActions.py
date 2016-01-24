@@ -37,6 +37,9 @@ if __name__ == '__main__':
                 fromPath = os.path.join(sourceDirectory, params["name"])
                 toPath = os.path.join(targetDirectory, params["name"])
                 if debug: print('copy from "' + fromPath + '" to "' + toPath + '"')
+                toDirectory = os.path.dirname(toPath)
+                if not os.path.isdir(toDirectory):
+                    os.makedirs(toDirectory)
                 shutil.copy2(fromPath, toPath)
             elif actionType == "delete":
                 path = os.path.join(targetDirectory, params["name"])
@@ -46,6 +49,9 @@ if __name__ == '__main__':
                 fromPath = os.path.join(compareDirectory, params["name"])
                 toPath = os.path.join(targetDirectory, params["name"])
                 if debug: print('hardlink from "' + fromPath + '" to "' + toPath + '"')
+                toDirectory = os.path.dirname(toPath)
+                if not os.path.isdir(toDirectory):
+                    os.makedirs(toDirectory)
                 hardlink(fromPath, toPath)
         except OSError as e:
             print(e)
