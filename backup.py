@@ -21,9 +21,6 @@ class File:
             inStr.append("target")
         return self.path + " (" + ",".join(inStr) + ")"
 
-    #def __repr__(self):
-    #   return str(self)
-
 class Action:
     # Possible actions:
     # copy (always from source to target),
@@ -40,8 +37,6 @@ class Action:
         return {'type': self.type, 'params': self.params}
 
     def __str__(self):
-        #paramStr = ", ".join(map(lambda k_v: '"' + k_v[0] + '": "' + k_v[1] + '"', self.params.items())) 
-        #return '{"type": "' + self.type + '", params": {' + paramStr + '}}'
         return json.dumps(self.asDict())
 
 def filesEqual(a, b):
@@ -82,8 +77,6 @@ if __name__ == '__main__':
     spec = importlib.util.spec_from_file_location("config", sys.argv[1])
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
-
-    #modeModule = importlib.import_module("modes." + config.MODE)
 
     # Setup directories
     logFile = None
@@ -128,9 +121,6 @@ if __name__ == '__main__':
             else:
                 fileSet.append(File(fullName, True))
 
-        for name in dirs:
-            pass
-
     for root, dirs, files in os.walk(compareDirectory):
         relRoot = os.path.relpath(root, compareDirectory)
         for name in files:
@@ -141,10 +131,6 @@ if __name__ == '__main__':
                     break
             else:
                 fileSet.append(File(fullName, True))
-
-        for name in dirs:
-            #os.path.join(root, name)
-            pass
 
     for e in fileSet:
         print(e)
