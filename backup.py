@@ -56,10 +56,9 @@ def filesEq(a, b):
             return True
 
         return False
-    except FileNotFoundError as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
-        logging.exception(e)
-        # TODO: Solve this properly
-        return True # Mostly when files are equal, nothing happens
+    except Exception as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
+        logging.exception("Either 'stat'-ing or comparing the files failed: " + str(e))
+        return False # If we don't know, it has to be assumed they are different, even if this might result in more file operatiosn being scheduled
 
 if __name__ == '__main__':
     logger = logging.getLogger()
