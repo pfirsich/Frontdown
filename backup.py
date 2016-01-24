@@ -251,9 +251,21 @@ if __name__ == '__main__':
         if config.OPEN_ACTIONFILE:
             os.startfile(actionFilePath)
 
+    if config.SAVE_ACTIONHTML:
+        templatePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.html")
+        with open(templatePath, "r") as templateFile:
+            template = templateFile.read()
+        html = template.replace("<!-- JSON -->", actionJson)
+        reportPath = os.path.join(metadataDirectory, "actions.html")
+        with open(reportPath, "w") as reportFile:
+            reportFile.write(html)
+
+        if config.OPEN_ACTIONHTML:
+            os.startfile(reportPath)
+
     if config.APPLY_ACTIONS:
         executeActionList(actionObject)
-        
+
         with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
             metadata = json.loads(inFile.read())
 

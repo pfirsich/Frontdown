@@ -37,3 +37,7 @@ MOVE_DETECTION = False
 
 # Log level, possible options: "ERROR", "WARNING", "INFO", "DEBUG"
 LOG_LEVEL = "INFO"
+
+SAVE_ACTIONHTML = True
+OPEN_ACTIONHTML = True
+

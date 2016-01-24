@@ -1,0 +1,71 @@
+<html>
+    <head>
+        <title>Backup Viewer</title>
+        <style>
+            body {
+                font-family: Monospace;
+            }
+            
+            table {
+                font-size: 1.2rem;
+                margin-left: auto;
+                margin-right: auto;
+                width: 100%;
+                max-width: 1024px;
+            }
+            
+            /*tr:nth-child(even) {
+                background-color: #eee;
+            }*/
+            
+            td, th {
+                text-align: left;
+                padding: 0.3rem;
+                padding-right: 2rem;
+            }
+            
+            tr.hardlink {
+                background-color: #E0EFFF;
+            }
+            
+            tr.copy {
+                background-color: #FFF3D6;
+            }
+            
+            tr.delete {
+                background-color: #FFCCC7;
+            }
+            
+            thead {
+                border-bottom: 1px solid black;
+            }
+        </style>
+    </head>
+    <body>
+        <table id="display">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>File Name</th>
+                </tr>
+            </thead>
+            <tbody>
+            
+            </tbody>
+        </table>
+        <script id="data" type="application/json"><!-- JSON --></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+        <script type="text/javascript">
+            var data = JSON.parse($("#data").text());
+            var $tbody = $("#display > tbody");
+            for (var i=0; i<data.actions.length; i++) {
+                var action = data.actions[i];
+                var $tr = $("<tr class=\"" + action.type + "\">");
+                $tr.append("<td class=\"type\">" + action.type  + "</td>");
+                // I'm sorry... :'(
+                $tr.append("<td class=\"name\">" + action.params.name.replace(/\\/g, "\\&#8203;") + "</td>");
+                $tbody.append($tr);
+            }
+        </script>
+    </body>
+</html>
