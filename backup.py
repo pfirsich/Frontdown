@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
         targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
         compareDirectory = targetDirectory
-        os.makedirs(targetDirectory) # Create the config.SOURCE_DIR folder
+        os.makedirs(targetDirectory) # Create the config.SOURCE_DIR folder inside the Backup folder
 
         oldBackups = []
         if config.COMPARE_WITH_LAST_BACKUP:
