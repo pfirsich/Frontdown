@@ -5,7 +5,7 @@
             body {
                 font-family: Monospace;
             }
-            
+
             table {
                 font-size: 1.2rem;
                 margin-left: auto;
@@ -13,29 +13,29 @@
                 width: 100%;
                 max-width: 1024px;
             }
-            
+
             /*tr:nth-child(even) {
                 background-color: #eee;
             }*/
-            
+
             td, th {
                 text-align: left;
                 padding: 0.3rem;
                 padding-right: 2rem;
             }
-            
+
             tr.hardlink {
                 background-color: #E0EFFF;
             }
-            
+
             tr.copy {
                 background-color: #FFF3D6;
             }
-            
+
             tr.delete {
                 background-color: #FFCCC7;
             }
-            
+
             thead {
                 border-bottom: 1px solid black;
             }
@@ -50,7 +50,7 @@
                 </tr>
             </thead>
             <tbody>
-            
+
             </tbody>
         </table>
         <script id="data" type="application/json"><!-- JSON --></script>
@@ -58,8 +58,8 @@
         <script type="text/javascript">
             var data = JSON.parse($("#data").text());
             var $tbody = $("#display > tbody");
-            for (var i=0; i<data.actions.length; i++) {
-                var action = data.actions[i];
+            for (var i=0; i<data.length; i++) {
+                var action = data[i];
                 var $tr = $("<tr class=\"" + action.type + "\">");
                 $tr.append("<td class=\"type\">" + action.type  + "</td>");
                 // I'm sorry... :'(

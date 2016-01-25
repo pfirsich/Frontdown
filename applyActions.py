@@ -4,6 +4,8 @@ import json
 import shutil
 import logging
 
+from constants import *
+
 # From here: https://github.com/sid0/ntfs/blob/master/ntfsutils/hardlink.py
 import ctypes
 from ctypes import WinError
@@ -17,14 +19,17 @@ def hardlink(source, link_name):
     if res == 0:
         raise WinError()
 
-def executeActionList(actionData):
+def executeActionList(metadataDirectory, actions):
     logging.info("Apply actions.")
 
-    sourceDirectory = actionData["sourceDirectory"]
-    compareDirectory = actionData["compareDirectory"]
-    targetDirectory = actionData["targetDirectory"]
+    with open(os.path.join(metadataDirectory, METADATA_FILENAME)) as inFile:
+        metadata = json.load(inFile)
 
-    for action in actionData["actions"]:
+    sourceDirectory = metadata["sourceDirectory"]
+    compareDirectory = metadata["compareDirectory"]
+    targetDirectory = metadata["targetDirectory"]
+
+    for action in actions:
         actionType = action["type"]
         params = action["params"]
         try:
@@ -53,16 +58,25 @@ def executeActionList(actionData):
         except IOError as e:
             logging.exception(e)
 
-    # TODO: Set successful
+    metadata["successful"] = True # TODO: Find a more accurate condition
+
+    with open(os.path.join(metadataDirectory, METADATA_FILENAME), "w") as outFile:
+        json.dump(metadata, outFile, indent=4)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        quit("Please specify an actions file.")
+        quit("Please specify a backup metadata directory path")
 
-    logging.info("Apply action file " + sys.argv[1])
+    metadataDirectory = sys.argv[1]
 
-    with open(sys.argv[1]) as actionFile:
-        actionData = json.loads(actionFile.read())
+    fileHandler = logging.FileHandler(os.path.join(metadataDirectory, LOG_FILENAME))
+    fileHandler.setFormatter(LOGFORMAT)
+    logging.getLogger().addHandler(fileHandler)
 
-    executeActionList(actionData)
+    logging.info("Apply action file in backup directory " + metadataDirectory)
+
+    with open(os.path.join(metadataDirectory, ACTIONS_FILENAME)) as actionFile:
+        actions = json.load(actionFile)
+
+    executeActionList(metadataDirectory, actions)
 

@@ -9,6 +9,7 @@ import logging
 import time
 
 from applyActions import executeActionList
+from constants import *
 
 class File:
     def __init__(self, path, *, source, target):
@@ -24,6 +25,13 @@ class File:
             inStr.append("target")
         return self.path + " (" + ",".join(inStr) + ")"
 
+def relativeFileWalk(path):
+    for root, dirs, files in os.walk(path):
+        relRoot = os.path.relpath(root, path)
+        #yield os.path.normpath(relRoot)
+        for name in files:
+            yield os.path.normpath(os.path.join(relRoot, name))
+
 # Possible actions:
 # copy (always from source to target),
 # delete (always in target)
@@ -31,7 +39,7 @@ class File:
 # rename (always in target) (2-variate) (only needed for move detection)
 # hardlink2 (alway from compare directory to target directory) (2-variate) (only needed for move detection)
 def Action(type, **params):
-    return dict(type=type, params=params)
+    return OrderedDict(type=type, params=params)
 
 def filesEq(a, b):
     try:
@@ -62,13 +70,11 @@ def filesEq(a, b):
 
 if __name__ == '__main__':
     logger = logging.getLogger()
-    logFormat = logging.Formatter(fmt='%(levelname)-8s %(asctime)-8s.%(msecs)03d: %(message)s', datefmt="%H:%M:%S")
 
     stderrHandler = logging.StreamHandler(stream=sys.stderr)
-    stderrHandler.setFormatter(logFormat)
+    stderrHandler.setFormatter(LOGFORMAT)
     logger.addHandler(stderrHandler)
 
-    logFile = None
     if len(sys.argv) < 2:
         logging.critical("Please specify the configuration file for your backup.")
         quit()
@@ -79,7 +85,7 @@ if __name__ == '__main__':
 
     # from here: http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     spec = importlib.util.spec_from_file_location("config", sys.argv[1])
-    # TODO: default values for config
+    # TODO: default values for config, also implement config class that prohibits setting and getting non-registered values
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
 
@@ -89,10 +95,8 @@ if __name__ == '__main__':
         config.VERSIONED = True
         config.COMPARE_WITH_LAST_BACKUP = True
 
-    # Setup directories
-    metadataDirectory = config.TARGET_DIR
-    targetDirectory = config.TARGET_DIR
-    compareDirectory = targetDirectory
+    # Setup target and metadata directories and metadata file
+    os.makedirs(config.TARGET_DIR, exist_ok = True)
     if config.VERSIONED:
         metadataDirectory = os.path.join(config.TARGET_DIR, time.strftime(config.VERSION_NAME))
 
@@ -100,70 +104,81 @@ if __name__ == '__main__':
         while True:
             try:
                 path = metadataDirectory
-                if suffixNumber > 1: path = path + " #" + str(suffixNumber)
+                if suffixNumber > 1: path = path + "_" + str(suffixNumber)
                 os.makedirs(path)
                 metadataDirectory = path
                 break
             except FileExistsError as e:
                 suffixNumber += 1
-                logging.error("Target Backup directory '" + metadataDirectory + "' already exists. Appending suffix '# " + str(suffixNumber) + "'")
+                logging.error("Target Backup directory '" + path + "' already exists. Appending suffix '_" + str(suffixNumber) + "'")
+    else:
+        metadataDirectory = config.TARGET_DIR
 
-        # Prepare metadata.json
-        with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
-            outFile.write(json.dumps({'name': os.path.basename(metadataDirectory), 'successful': False, 'created': time.time()}))
+    # Create metadataDirectory and targetDirectory
+    targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
+    compareDirectory = targetDirectory
+    os.makedirs(targetDirectory, exist_ok = True)
 
-        fileHandler = logging.FileHandler(os.path.join(metadataDirectory, "log.txt"))
-        fileHandler.setFormatter(logFormat)
-        logger.addHandler(fileHandler)
+    # Init log file
+    fileHandler = logging.FileHandler(os.path.join(metadataDirectory, LOG_FILENAME))
+    fileHandler.setFormatter(LOGFORMAT)
+    logger.addHandler(fileHandler)
 
-        targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
-        compareDirectory = targetDirectory
-        os.makedirs(targetDirectory) # Create the config.SOURCE_DIR folder inside the Backup folder
-
+    # update compare directory
+    if config.VERSIONED and config.COMPARE_WITH_LAST_BACKUP:
         oldBackups = []
-        if config.COMPARE_WITH_LAST_BACKUP:
-            for entry in os.scandir(config.TARGET_DIR):
-                if entry.is_dir() and os.path.join(config.TARGET_DIR, entry.name) != metadataDirectory:
-                    metadataFile = os.path.join(config.TARGET_DIR, entry.name, "metadata.json")
-                    if os.path.isfile(metadataFile):
-                        with open(metadataFile) as inFile:
-                            oldBackups.append(json.loads(inFile.read()))
+        for entry in os.scandir(config.TARGET_DIR):
+            if entry.is_dir() and os.path.join(config.TARGET_DIR, entry.name) != metadataDirectory:
+                metadataFile = os.path.join(config.TARGET_DIR, entry.name, METADATA_FILENAME)
+                if os.path.isfile(metadataFile):
+                    with open(metadataFile) as inFile:
+                        oldBackups.append(json.load(inFile))
 
-            for backup in sorted(oldBackups, key = lambda x: x['created'], reverse = True):
-                if backup["successful"]:
-                    compareDirectory = os.path.join(config.TARGET_DIR, backup['name'], os.path.basename(config.SOURCE_DIR))
-                    break
-                else:
-                    logging.error("It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
+        logging.debug("Found " + str(len(oldBackups)) + " old backups: " + str(oldBackups))
 
-    logging.info("source directory: " + config.SOURCE_DIR)
-    logging.info("metadata directory: " + metadataDirectory)
-    logging.info("target directory: " + targetDirectory)
-    logging.info("compare directory: " + compareDirectory)
+        for backup in sorted(oldBackups, key = lambda x: x['started'], reverse = True):
+            if backup["successful"]:
+                compareDirectory = os.path.join(config.TARGET_DIR, backup['name'], os.path.basename(config.SOURCE_DIR))
+                break
+            else:
+                logging.error("It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
+        else:
+            logging.warning("No old backup found. Creating first backup.")
+
+    # Prepare metadata.json
+    with open(os.path.join(metadataDirectory, METADATA_FILENAME), "w") as outFile:
+        json.dump({
+            'name': os.path.basename(metadataDirectory),
+            'successful': False,
+            'started': time.time(),
+            'sourceDirectory': config.SOURCE_DIR,
+            'compareDirectory': compareDirectory,
+            'targetDirectory': targetDirectory,
+        }, outFile, indent=4)
+
+    logging.info("Source directory: " + config.SOURCE_DIR)
+    logging.info("Metadata directory: " + metadataDirectory)
+    logging.info("Target directory: " + targetDirectory)
+    logging.info("Compare directory: " + compareDirectory)
+    logging.info("Starting backup in " + config.MODE + " mode")
 
     # Build a list of all files in source and target
     # TODO: Include/exclude empty folders
     fileSet = []
-    for root, dirs, files in os.walk(config.SOURCE_DIR):
-        relRoot = os.path.relpath(root, config.SOURCE_DIR)
-        for name in files:
-            fullName = os.path.normpath(os.path.join(relRoot, name))
-            for exlude in config.EXCLUDE_PATHS:
-                if fnmatch.fnmatch(fullName, exlude):
-                    break
-            else:
-                fileSet.append(File(fullName, source=True, target=False))
+    for fullName in relativeFileWalk(config.SOURCE_DIR):
+        for exclude in config.EXCLUDE_PATHS:
+            if fnmatch.fnmatch(fullName, exclude):
+                break
+        else:
+            fileSet.append(File(fullName, source=True, target=False))
 
-    for root, dirs, files in os.walk(compareDirectory):
-        relRoot = os.path.relpath(root, compareDirectory)
-        for name in files:
-            fullName = os.path.normpath(os.path.join(relRoot, name))
-            for element in fileSet:
-                if element.path == fullName:
-                    element.target = True
-                    break
-            else:
-                fileSet.append(File(fullName, source=False, target=True))
+    for fullName in relativeFileWalk(compareDirectory):
+        for element in fileSet:
+            if element.path == fullName:
+                element.target = True
+                break
+        else:
+            fileSet.append(File(fullName, source=False, target=True))
 
     for file in fileSet:
         logging.debug(file)
@@ -232,18 +247,13 @@ if __name__ == '__main__':
                 else:
                     actions.append(Action("copy", name=element.path))
 
-    # Create the action object
-    actionObject = OrderedDict()
-    actionObject["sourceDirectory"] = config.SOURCE_DIR
-    actionObject["compareDirectory"] = compareDirectory
-    actionObject["targetDirectory"] = targetDirectory
-    actionObject["actions"] = actions
 
-    actionJson = json.dumps(actionObject, indent=2)
+    # Create the action object
+    actionJson = "[\n" + ",\n".join(map(json.dumps, actions)) + "\n]"
 
     if config.SAVE_ACTIONFILE:
         # Write the action file
-        actionFilePath = os.path.join(metadataDirectory, "actions.json")
+        actionFilePath = os.path.join(metadataDirectory, ACTIONS_FILENAME)
         logging.info("Saving the action file to " + actionFilePath)
         with open(actionFilePath, "w") as actionFile:
             actionFile.write(actionJson)
@@ -256,7 +266,7 @@ if __name__ == '__main__':
         with open(templatePath, "r") as templateFile:
             template = templateFile.read()
         html = template.replace("<!-- JSON -->", actionJson)
-        reportPath = os.path.join(metadataDirectory, "actions.html")
+        reportPath = os.path.join(metadataDirectory, ACTIONSHTML_FILENAME)
         with open(reportPath, "w") as reportFile:
             reportFile.write(html)
 
@@ -264,13 +274,5 @@ if __name__ == '__main__':
             os.startfile(reportPath)
 
     if config.APPLY_ACTIONS:
-        executeActionList(actionObject)
-
-        with open(os.path.join(metadataDirectory, "metadata.json")) as inFile:
-            metadata = json.loads(inFile.read())
-
-        metadata["successful"] = True
-
-        with open(os.path.join(metadataDirectory, "metadata.json"), "w") as outFile:
-            outFile.write(json.dumps(metadata))
+        executeActionList(metadataDirectory, actions)
 
