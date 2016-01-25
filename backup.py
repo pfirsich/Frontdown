@@ -10,6 +10,8 @@ import time
 
 from applyActions import executeActionList
 from constants import *
+# TODO: Fix json errors being incomprehensible, because the location specified does not match the minified json
+import strip_comments_json as configjson
 
 class File:
     def __init__(self, path, *, source, target):
@@ -47,7 +49,7 @@ def filesEq(a, b):
         bStat = os.stat(b)
 
         equal = True
-        for method in config.COMPARE_METHOD:
+        for method in config["compare_method"]:
             if method == "moddate":
                 if aStat.st_mtime != bStat.st_mtime:
                     break
@@ -83,22 +85,34 @@ if __name__ == '__main__':
         logging.critical("Configuration '" + sys.argv[1] + "' does not exist.")
         quit()
 
-    # from here: http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
-    spec = importlib.util.spec_from_file_location("config", sys.argv[1])
-    # TODO: default values for config, also implement config class that prohibits setting and getting non-registered values
-    config = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(config)
+    with open(DEFAULT_CONFIG_FILENAME) as configFile:
+        config = configjson.load(configFile)
 
-    logger.setLevel(config.LOG_LEVEL)
+    userConfigPath = sys.argv[1]
+    with open(userConfigPath) as userConfigFile:
+        userConfig = configjson.load(userConfigFile)
 
-    if config.MODE == "hardlink":
-        config.VERSIONED = True
-        config.COMPARE_WITH_LAST_BACKUP = True
+    for k, v in userConfig.items():
+        if k not in config:
+            logging.critical("Unknown key '" + k + "' in the passed configuration file '" + userConfigPath + "'")
+            quit()
+        else:
+            config[k] = v
+    for mandatory in ["source_dir", "target_dir"]:
+        if mandatory not in userConfig:
+            logging.critical("Please specify the mandatory key '" + mandatory + "' in the passed configuration file '" + userConfigPath + "'")
+            quit()
+
+    logger.setLevel(config["log_level"])
+
+    if config["mode"] == "hardlink":
+        config["versioned"] = True
+        config["compare_with_last_backup"] = True
 
     # Setup target and metadata directories and metadata file
-    os.makedirs(config.TARGET_DIR, exist_ok = True)
-    if config.VERSIONED:
-        metadataDirectory = os.path.join(config.TARGET_DIR, time.strftime(config.VERSION_NAME))
+    os.makedirs(config["target_dir"], exist_ok = True)
+    if config["versioned"]:
+        metadataDirectory = os.path.join(config["target_dir"], time.strftime(config["version_name"]))
 
         suffixNumber = 1
         while True:
@@ -112,10 +126,10 @@ if __name__ == '__main__':
                 suffixNumber += 1
                 logging.error("Target Backup directory '" + path + "' already exists. Appending suffix '_" + str(suffixNumber) + "'")
     else:
-        metadataDirectory = config.TARGET_DIR
+        metadataDirectory = config["target_dir"]
 
     # Create metadataDirectory and targetDirectory
-    targetDirectory = os.path.join(metadataDirectory, os.path.basename(config.SOURCE_DIR))
+    targetDirectory = os.path.join(metadataDirectory, os.path.basename(config["source_dir"]))
     compareDirectory = targetDirectory
     os.makedirs(targetDirectory, exist_ok = True)
 
@@ -125,11 +139,11 @@ if __name__ == '__main__':
     logger.addHandler(fileHandler)
 
     # update compare directory
-    if config.VERSIONED and config.COMPARE_WITH_LAST_BACKUP:
+    if config["versioned"] and config["compare_with_last_backup"]:
         oldBackups = []
-        for entry in os.scandir(config.TARGET_DIR):
-            if entry.is_dir() and os.path.join(config.TARGET_DIR, entry.name) != metadataDirectory:
-                metadataFile = os.path.join(config.TARGET_DIR, entry.name, METADATA_FILENAME)
+        for entry in os.scandir(config["target_dir"]):
+            if entry.is_dir() and os.path.join(config["target_dir"], entry.name) != metadataDirectory:
+                metadataFile = os.path.join(config["target_dir"], entry.name, METADATA_FILENAME)
                 if os.path.isfile(metadataFile):
                     with open(metadataFile) as inFile:
                         oldBackups.append(json.load(inFile))
@@ -138,7 +152,7 @@ if __name__ == '__main__':
 
         for backup in sorted(oldBackups, key = lambda x: x['started'], reverse = True):
             if backup["successful"]:
-                compareDirectory = os.path.join(config.TARGET_DIR, backup['name'], os.path.basename(config.SOURCE_DIR))
+                compareDirectory = os.path.join(config["target_dir"], backup['name'], os.path.basename(config["source_dir"]))
                 break
             else:
                 logging.error("It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
@@ -151,22 +165,22 @@ if __name__ == '__main__':
             'name': os.path.basename(metadataDirectory),
             'successful': False,
             'started': time.time(),
-            'sourceDirectory': config.SOURCE_DIR,
+            'sourceDirectory': config["source_dir"],
             'compareDirectory': compareDirectory,
             'targetDirectory': targetDirectory,
         }, outFile, indent=4)
 
-    logging.info("Source directory: " + config.SOURCE_DIR)
+    logging.info("Source directory: " + config["source_dir"])
     logging.info("Metadata directory: " + metadataDirectory)
     logging.info("Target directory: " + targetDirectory)
     logging.info("Compare directory: " + compareDirectory)
-    logging.info("Starting backup in " + config.MODE + " mode")
+    logging.info("Starting backup in " + config["mode"] + " mode")
 
     # Build a list of all files in source and target
     # TODO: Include/exclude empty folders
     fileSet = []
-    for fullName in relativeFileWalk(config.SOURCE_DIR):
-        for exclude in config.EXCLUDE_PATHS:
+    for fullName in relativeFileWalk(config["source_dir"]):
+        for exclude in config["exclude_paths"]:
             if fnmatch.fnmatch(fullName, exclude):
                 break
         else:
@@ -232,8 +246,8 @@ if __name__ == '__main__':
         # source&target
         elif element.source and element.target:
             # same
-            if filesEq(os.path.join(config.SOURCE_DIR, element.path), os.path.join(compareDirectory, element.path)):
-                if config.MODE == "hardlink":
+            if filesEq(os.path.join(config["source_dir"], element.path), os.path.join(compareDirectory, element.path)):
+                if config["mode"] == "hardlink":
                     actions.append(Action("hardlink", name=element.path))
 
             # different
@@ -242,25 +256,25 @@ if __name__ == '__main__':
 
         # target\source
         elif not element.source and element.target:
-            if config.MODE == "mirror":
-                if not config.COMPARE_WITH_LAST_BACKUP or not config.VERSIONED:
+            if config["mode"] == "mirror":
+                if not config["compare_with_last_backup"] or not config["versioned"]:
                     actions.append(Action("delete", name=element.path))
 
 
     # Create the action object
     actionJson = "[\n" + ",\n".join(map(json.dumps, actions)) + "\n]"
 
-    if config.SAVE_ACTIONFILE:
+    if config["save_actionfile"]:
         # Write the action file
         actionFilePath = os.path.join(metadataDirectory, ACTIONS_FILENAME)
         logging.info("Saving the action file to " + actionFilePath)
         with open(actionFilePath, "w") as actionFile:
             actionFile.write(actionJson)
 
-        if config.OPEN_ACTIONFILE:
+        if config["open_actionfile"]:
             os.startfile(actionFilePath)
 
-    if config.SAVE_ACTIONHTML:
+    if config["save_actionhtml"]:
         templatePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.html")
         with open(templatePath, "r") as templateFile:
             template = templateFile.read()
@@ -269,9 +283,9 @@ if __name__ == '__main__':
         with open(reportPath, "w") as reportFile:
             reportFile.write(html)
 
-        if config.OPEN_ACTIONHTML:
+        if config["open_actionhtml"]:
             os.startfile(reportPath)
 
-    if config.APPLY_ACTIONS:
+    if config["apply_actions"]:
         executeActionList(metadataDirectory, actions)
 
