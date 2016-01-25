@@ -224,28 +224,27 @@ if __name__ == '__main__':
 
     # copy source\target in every mode
     for element in fileSet:
-        if element.source:
-            if not element.target:
+
+        # source\target
+        if element.source and not element.target:
+            actions.append(Action("copy", name=element.path))
+
+        # source&target
+        elif element.source and element.target:
+            # same
+            if filesEq(os.path.join(config.SOURCE_DIR, element.path), os.path.join(compareDirectory, element.path)):
+                if config.MODE == "hardlink":
+                    actions.append(Action("hardlink", name=element.path))
+
+            # different
+            else:
                 actions.append(Action("copy", name=element.path))
 
-    if config.MODE == "save" or config.MODE == "mirror":
-        for element in fileSet:
-            if element.source and element.target:
-                if not filesEq(os.path.join(config.SOURCE_DIR, element.path), os.path.join(compareDirectory, element.path)):
-                    actions.append(Action("copy", name=element.path))
-
-    if config.MODE == "mirror":
-        if config.COMPARE_WITH_LAST_BACKUP:
-            for element in fileSet:
-                if not element.source and element.target:
+        # target\source
+        elif not element.source and element.target:
+            if config.MODE == "mirror":
+                if not config.COMPARE_WITH_LAST_BACKUP or not config.VERSIONED:
                     actions.append(Action("delete", name=element.path))
-    elif config.MODE == "hardlink":
-        for element in fileSet:
-            if element.source and element.target:
-                if filesEq(os.path.join(config.SOURCE_DIR, element.path), os.path.join(compareDirectory, element.path)):
-                    actions.append(Action("hardlink", name=element.path))
-                else:
-                    actions.append(Action("copy", name=element.path))
 
 
     # Create the action object
