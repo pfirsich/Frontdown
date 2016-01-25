@@ -1,0 +1,41 @@
+{
+	"source_dir": "<source directory>",
+	"target_dir": "<target directory>",
+
+	"exclude_paths": [],
+
+	// save, mirror, hardlinks
+	"mode": "hardlink",
+
+	// In hardlink mode this is True automatically
+	"versioned": true,
+
+	// Uses time.strftime
+	"version_name": "%Y_%m_%d",
+
+	// only relevant when versioned = true, will not use the directory writing to
+	// In hardlink mode this is true automatically
+	"compare_with_last_backup": true,
+
+	"save_actionfile": true,
+
+	// Opens the action file. Only performed if save_actionfile = true.
+	"open_actionfile": false,
+
+	"apply_actions": true,
+
+	// ordered list of possible elements "moddate", "size", "bytes", "md5" (not yet implemented)
+	"compare_method": ["moddate", "size", "bytes"],
+
+	// Caching not yet implemented
+	"cache_target_data": false,
+
+	// Move detection not yet implemented. And I probably never will, since the gain is very small and sometimes even non-existent if the moved files are big enough
+	"move_detection": false,
+
+	// Log level, possible options: "ERROR", "WARNING", "INFO", "DEBUG"
+	"log_level": "INFO",
+
+	"save_actionhtml": true,
+	"open_actionhtml": true
+}
