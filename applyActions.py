@@ -38,8 +38,7 @@ def executeActionList(metadataDirectory, actions):
                 toPath = os.path.join(targetDirectory, params["name"])
                 logging.debug('copy from "' + fromPath + '" to "' + toPath + '"')
                 toDirectory = os.path.dirname(toPath)
-                if not os.path.isdir(toDirectory):
-                    os.makedirs(toDirectory)
+                os.makedirs(toDirectory, exist_ok = True)
                 shutil.copy2(fromPath, toPath)
             elif actionType == "delete":
                 path = os.path.join(targetDirectory, params["name"])
@@ -50,8 +49,7 @@ def executeActionList(metadataDirectory, actions):
                 toPath = os.path.join(targetDirectory, params["name"])
                 logging.debug('hardlink from "' + fromPath + '" to "' + toPath + '"')
                 toDirectory = os.path.dirname(toPath)
-                if not os.path.isdir(toDirectory):
-                    os.makedirs(toDirectory)
+                os.makedirs(toDirectory, exist_ok = True)
                 hardlink(fromPath, toPath)
         except OSError as e:
             logging.exception(e)
