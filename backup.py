@@ -1,6 +1,6 @@
 import os, sys
 
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import fnmatch
 import filecmp
 import importlib.util
@@ -260,14 +260,11 @@ if __name__ == '__main__':
                 if not config["compare_with_last_backup"] or not config["versioned"]:
                     actions.append(Action("delete", name=element.path))
 
-
-    # Create the action object
-    actionJson = "[\n" + ",\n".join(map(json.dumps, actions)) + "\n]"
-
     if config["save_actionfile"]:
         # Write the action file
         actionFilePath = os.path.join(metadataDirectory, ACTIONS_FILENAME)
         logging.info("Saving the action file to " + actionFilePath)
+        actionJson = "[\n" + ",\n".join(map(json.dumps, actions)) + "\n]"
         with open(actionFilePath, "w") as actionFile:
             actionFile.write(actionJson)
 
@@ -275,16 +272,33 @@ if __name__ == '__main__':
             os.startfile(actionFilePath)
 
     if config["save_actionhtml"]:
+        # Write HTML actions
+        actionHtmlFilePath = os.path.join(metadataDirectory, ACTIONSHTML_FILENAME)
+        logging.info("Generating and writing action HTML file to " + actionHtmlFilePath)
         templatePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.html")
         with open(templatePath, "r") as templateFile:
             template = templateFile.read()
-        html = template.replace("<!-- JSON -->", actionJson)
-        reportPath = os.path.join(metadataDirectory, ACTIONSHTML_FILENAME)
-        with open(reportPath, "w") as reportFile:
-            reportFile.write(html)
+
+        with open(actionHtmlFilePath, "w", encoding = "utf-8") as actionHTMLFile:
+            templateParts = template.split("<!-- ACTIONTABLE -->")
+
+            actionHist = defaultdict(int)
+            for action in actions:
+                actionHist[action["type"]] += 1
+            actionOverviewHTML = " | ".join(map(lambda k_v: k_v[0] + "(" + str(k_v[1]) + ")", actionHist.items()))
+            actionHTMLFile.write(templateParts[0].replace("<!-- OVERVIEW -->", actionOverviewHTML))
+
+            # Writing this directly is a lot faster than concatenating huge strings
+            for action in actions:
+                if action["type"] not in config["exclude_actionhtml_actions"]:
+                    # Insert zero width space, so that the line breaks at the backslashes
+                    actionHTMLFile.write("\t\t<tr class=\"" + action["type"] + "\"><td class=\"type\">" + action["type"]
+                                         + "</td><td class=\"name\">" + action["params"]["name"].replace("\\", "\\&#8203;") + "</td>\n")
+
+            actionHTMLFile.write(templateParts[1])
 
         if config["open_actionhtml"]:
-            os.startfile(reportPath)
+            os.startfile(actionHtmlFilePath)
 
     if config["apply_actions"]:
         executeActionList(metadataDirectory, actions)

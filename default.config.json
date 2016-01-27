@@ -37,5 +37,6 @@
 	"log_level": "INFO",
 
 	"save_actionhtml": true,
-	"open_actionhtml": true
+	"open_actionhtml": true,
+	"exclude_actionhtml_actions": ["hardlink"]
 }
