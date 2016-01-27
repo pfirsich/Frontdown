@@ -13,11 +13,12 @@ from constants import *
 # TODO: Fix json errors being incomprehensible, because the location specified does not match the minified json
 import strip_comments_json as configjson
 
-class File:
-    def __init__(self, path, *, inSourceDir, inCompareDir):
+class FileDirectory:
+    def __init__(self, path, *, isDirectory, inSourceDir, inCompareDir):
         self.path = path
         self.inSourceDir = inSourceDir
         self.inCompareDir = inCompareDir
+        self.isDirectory = isDirectory
 
     def __str__(self):
         inStr = []
@@ -25,14 +26,18 @@ class File:
             inStr.append("source dir")
         if self.inCompareDir:
             inStr.append("compare dir")
-        return self.path + " (" + ",".join(inStr) + ")"
+        return self.path + ("(directory)" if self.isDirectory else "") + " (" + ",".join(inStr) + ")"
 
-def relativeFileWalk(path):
-    for root, dirs, files in os.walk(path):
-        relRoot = os.path.relpath(root, path)
-        #yield os.path.normpath(relRoot)
-        for name in files:
-            yield os.path.normpath(os.path.join(relRoot, name))
+def relativeWalk(path, startPath = None):
+    if startPath == None: startPath = path
+    for entry in os.scandir(path):
+        if entry.is_file():
+            yield os.path.relpath(entry.path, startPath), False
+        elif entry.is_dir():
+            yield os.path.relpath(entry.path, startPath), True
+            yield from relativeWalk(entry.path, startPath)
+        else:
+            logging.error("Encountered an object which is neither directory nor file: " + entry.path)
 
 # Possible actions:
 # copy (always from source to target),
@@ -179,23 +184,23 @@ if __name__ == '__main__':
     # Build a list of all files in source directory and compare directory
     # TODO: Include/exclude empty folders
     logging.info("Building file set.")
-    fileSet = []
-    for fullName in relativeFileWalk(config["source_dir"]):
+    fileDirSet = []
+    for name, isDir in relativeWalk(config["source_dir"]):
         for exclude in config["exclude_paths"]:
-            if fnmatch.fnmatch(fullName, exclude):
+            if fnmatch.fnmatch(name, exclude):
                 break
         else:
-            fileSet.append(File(fullName, inSourceDir = True, inCompareDir = False))
+            fileDirSet.append(FileDirectory(name, isDirectory = isDir, inSourceDir = True, inCompareDir = False))
 
-    for fullName in relativeFileWalk(compareDirectory):
-        for element in fileSet:
-            if element.path == fullName:
+    for name, isDir in relativeWalk(compareDirectory):
+        for element in fileDirSet:
+            if element.path == name:
                 element.inCompareDir = True
                 break
         else:
-            fileSet.append(File(fullName, inSourceDir = False, inCompareDir = True))
+            fileDirSet.append(FileDirectory(name, isDirectory = isDir, inSourceDir = False, inCompareDir = True))
 
-    for file in fileSet:
+    for file in fileDirSet:
         logging.debug(file)
 
     # Determine what to do with these files
@@ -238,21 +243,22 @@ if __name__ == '__main__':
     # but rather hardlink from compare\source (old backup) to source\compare (new backup)
 
     logging.info("Generating actions.")
-    for element in fileSet:
+    for element in fileDirSet:
         # source\compare
         if element.inSourceDir and not element.inCompareDir:
             actions.append(Action("copy", name=element.path))
 
         # source&compare
         elif element.inSourceDir and element.inCompareDir:
-            # same
-            if filesEq(os.path.join(config["source_dir"], element.path), os.path.join(compareDirectory, element.path)):
-                if config["mode"] == "hardlink":
-                    actions.append(Action("hardlink", name=element.path))
+            if not element.isDirectory:
+                # same
+                if filesEq(os.path.join(config["source_dir"], element.path), os.path.join(compareDirectory, element.path)):
+                    if config["mode"] == "hardlink":
+                        actions.append(Action("hardlink", name=element.path))
 
-            # different
-            else:
-                actions.append(Action("copy", name=element.path))
+                # different
+                else:
+                    actions.append(Action("copy", name=element.path))
 
         # compare\source
         elif not element.inSourceDir and element.inCompareDir:

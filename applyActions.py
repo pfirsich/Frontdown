@@ -37,13 +37,20 @@ def executeActionList(metadataDirectory, actions):
                 fromPath = os.path.join(sourceDirectory, params["name"])
                 toPath = os.path.join(targetDirectory, params["name"])
                 logging.debug('copy from "' + fromPath + '" to "' + toPath + '"')
-                toDirectory = os.path.dirname(toPath)
-                os.makedirs(toDirectory, exist_ok = True)
-                shutil.copy2(fromPath, toPath)
+
+                if os.path.isfile(fromPath):
+                    os.makedirs(os.path.dirname(toPath), exist_ok = True)
+                    shutil.copy2(fromPath, toPath)
+                elif os.path.isdir(fromPath):
+                    os.makedirs(toPath, exist_ok = True)
             elif actionType == "delete":
                 path = os.path.join(targetDirectory, params["name"])
                 logging.debug('delete file "' + path + '"')
-                os.remove(path)
+
+                if os.path.isfile(path):
+                    os.remove(path)
+                elif os.path.isdir(path):
+                    shutil.rmtree(path)
             elif actionType == "hardlink":
                 fromPath = os.path.join(compareDirectory, params["name"])
                 toPath = os.path.join(targetDirectory, params["name"])
@@ -51,6 +58,8 @@ def executeActionList(metadataDirectory, actions):
                 toDirectory = os.path.dirname(toPath)
                 os.makedirs(toDirectory, exist_ok = True)
                 hardlink(fromPath, toPath)
+            else:
+                logging.error("Unknown action type: " + actionType)
         except OSError as e:
             logging.exception(e)
         except IOError as e:
