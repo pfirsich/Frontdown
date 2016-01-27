@@ -178,6 +178,7 @@ if __name__ == '__main__':
 
     # Build a list of all files in source and target
     # TODO: Include/exclude empty folders
+    logging.info("Building file set.")
     fileSet = []
     for fullName in relativeFileWalk(config["source_dir"]):
         for exclude in config["exclude_paths"]:
@@ -236,9 +237,8 @@ if __name__ == '__main__':
     # The same, except if files in source\target and target\source are equal, don't copy,
     # but rather hardlink from target\source (old backup) to source\target (new backup)
 
-    # copy source\target in every mode
+    logging.info("Generating actions.")
     for element in fileSet:
-
         # source\target
         if element.source and not element.target:
             actions.append(Action("copy", name=element.path))
