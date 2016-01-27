@@ -14,17 +14,17 @@ from constants import *
 import strip_comments_json as configjson
 
 class File:
-    def __init__(self, path, *, source, target):
+    def __init__(self, path, *, inSourceDir, inCompareDir):
         self.path = path
-        self.source = source
-        self.target = target
+        self.inSourceDir = inSourceDir
+        self.inCompareDir = inCompareDir
 
     def __str__(self):
         inStr = []
-        if self.source:
-            inStr.append("source")
-        if self.target:
-            inStr.append("target")
+        if self.inSourceDir:
+            inStr.append("source dir")
+        if self.inCompareDir:
+            inStr.append("compare dir")
         return self.path + " (" + ",".join(inStr) + ")"
 
 def relativeFileWalk(path):
@@ -98,7 +98,7 @@ if __name__ == '__main__':
             quit()
         else:
             config[k] = v
-    for mandatory in ["source_dir", "target_dir"]:
+    for mandatory in ["source_dir", "backup_root_dir"]:
         if mandatory not in userConfig:
             logging.critical("Please specify the mandatory key '" + mandatory + "' in the passed configuration file '" + userConfigPath + "'")
             quit()
@@ -110,40 +110,40 @@ if __name__ == '__main__':
         config["compare_with_last_backup"] = True
 
     # Setup target and metadata directories and metadata file
-    os.makedirs(config["target_dir"], exist_ok = True)
+    os.makedirs(config["backup_root_dir"], exist_ok = True)
     if config["versioned"]:
-        metadataDirectory = os.path.join(config["target_dir"], time.strftime(config["version_name"]))
+        backupDirectory = os.path.join(config["backup_root_dir"], time.strftime(config["version_name"]))
 
         suffixNumber = 1
         while True:
             try:
-                path = metadataDirectory
+                path = backupDirectory
                 if suffixNumber > 1: path = path + "_" + str(suffixNumber)
                 os.makedirs(path)
-                metadataDirectory = path
+                backupDirectory = path
                 break
             except FileExistsError as e:
                 suffixNumber += 1
                 logging.error("Target Backup directory '" + path + "' already exists. Appending suffix '_" + str(suffixNumber) + "'")
     else:
-        metadataDirectory = config["target_dir"]
+        backupDirectory = config["backup_root_dir"]
 
-    # Create metadataDirectory and targetDirectory
-    targetDirectory = os.path.join(metadataDirectory, os.path.basename(config["source_dir"]))
+    # Create backupDirectory and targetDirectory
+    targetDirectory = os.path.join(backupDirectory, os.path.basename(config["source_dir"]))
     compareDirectory = targetDirectory
     os.makedirs(targetDirectory, exist_ok = True)
 
     # Init log file
-    fileHandler = logging.FileHandler(os.path.join(metadataDirectory, LOG_FILENAME))
+    fileHandler = logging.FileHandler(os.path.join(backupDirectory, LOG_FILENAME))
     fileHandler.setFormatter(LOGFORMAT)
     logger.addHandler(fileHandler)
 
     # update compare directory
     if config["versioned"] and config["compare_with_last_backup"]:
         oldBackups = []
-        for entry in os.scandir(config["target_dir"]):
-            if entry.is_dir() and os.path.join(config["target_dir"], entry.name) != metadataDirectory:
-                metadataFile = os.path.join(config["target_dir"], entry.name, METADATA_FILENAME)
+        for entry in os.scandir(config["backup_root_dir"]):
+            if entry.is_dir() and os.path.join(config["backup_root_dir"], entry.name) != backupDirectory:
+                metadataFile = os.path.join(config["backup_root_dir"], entry.name, METADATA_FILENAME)
                 if os.path.isfile(metadataFile):
                     with open(metadataFile) as inFile:
                         oldBackups.append(json.load(inFile))
@@ -152,7 +152,7 @@ if __name__ == '__main__':
 
         for backup in sorted(oldBackups, key = lambda x: x['started'], reverse = True):
             if backup["successful"]:
-                compareDirectory = os.path.join(config["target_dir"], backup['name'], os.path.basename(config["source_dir"]))
+                compareDirectory = os.path.join(config["backup_root_dir"], backup['name'], os.path.basename(config["source_dir"]))
                 break
             else:
                 logging.error("It seems the last backup failed, so it will be skipped and the new backup will compare the source to the backup '" + backup["name"] + "'. The failed backup should probably be deleted.")
@@ -160,9 +160,9 @@ if __name__ == '__main__':
             logging.warning("No old backup found. Creating first backup.")
 
     # Prepare metadata.json
-    with open(os.path.join(metadataDirectory, METADATA_FILENAME), "w") as outFile:
+    with open(os.path.join(backupDirectory, METADATA_FILENAME), "w") as outFile:
         json.dump({
-            'name': os.path.basename(metadataDirectory),
+            'name': os.path.basename(backupDirectory),
             'successful': False,
             'started': time.time(),
             'sourceDirectory': config["source_dir"],
@@ -171,12 +171,12 @@ if __name__ == '__main__':
         }, outFile, indent=4)
 
     logging.info("Source directory: " + config["source_dir"])
-    logging.info("Metadata directory: " + metadataDirectory)
+    logging.info("Backup directory: " + backupDirectory)
     logging.info("Target directory: " + targetDirectory)
     logging.info("Compare directory: " + compareDirectory)
     logging.info("Starting backup in " + config["mode"] + " mode")
 
-    # Build a list of all files in source and target
+    # Build a list of all files in source directory and compare directory
     # TODO: Include/exclude empty folders
     logging.info("Building file set.")
     fileSet = []
@@ -185,15 +185,15 @@ if __name__ == '__main__':
             if fnmatch.fnmatch(fullName, exclude):
                 break
         else:
-            fileSet.append(File(fullName, source=True, target=False))
+            fileSet.append(File(fullName, inSourceDir = True, inCompareDir = False))
 
     for fullName in relativeFileWalk(compareDirectory):
         for element in fileSet:
             if element.path == fullName:
-                element.target = True
+                element.inCompareDir = True
                 break
         else:
-            fileSet.append(File(fullName, source=False, target=True))
+            fileSet.append(File(fullName, inSourceDir = False, inCompareDir = True))
 
     for file in fileSet:
         logging.debug(file)
@@ -202,49 +202,49 @@ if __name__ == '__main__':
     actions = []
 
     # ============== SAVE
-    # Write all files that are in source, but are not already existing in target (in that version)
-    # source\target: copy
-    # source&target:
+    # Write all files that are in source, but are not already existing in compare (in that version)
+    # source\compare: copy
+    # source&compare:
     #   same: ignore
     #   different: copy
-    # target\source: ignore
+    # compare\source: ignore
 
     # --- move detection:
-    # The same, except if files in source\target and target\source are equal, don't copy,
-    # but rather rename target\source (old backup) to source\target (new backup)
+    # The same, except if files in source\compare and compare\source are equal, don't copy,
+    # but rather rename compare\source (old backup) to source\compare (new backup)
 
     # ============== MIRROR
-    # End up with a complete copy of source in target
-    # source\target: copy
-    # source&target:
+    # End up with a complete copy of source in compare
+    # source\compare: copy
+    # source&compare:
     #   same: ignore
     #   different: copy
-    # target\source: delete
+    # compare\source: delete
 
     # --- move detection:
-    # The same, except if files in source\target and target\source are equal, don't delete and copy, but rename
+    # The same, except if files in source\compare and compare\source are equal, don't delete and copy, but rename
 
 
     # ============== HARDLINK
     # (Attention: here the source is compared against an older backup!)
-    # End up with a complete copy of source in target, but have hardlinks to already existing versions in other backups, if it exists
-    # source\target: copy
+    # End up with a complete copy of source in compare, but have hardlinks to already existing versions in other backups, if it exists
+    # source\compare: copy
     #   same: hardlink to new backup from old backup
     #   different: copy
-    # target\source: ignore
+    # compare\source: ignore
 
     # --- move detection:
-    # The same, except if files in source\target and target\source are equal, don't copy,
-    # but rather hardlink from target\source (old backup) to source\target (new backup)
+    # The same, except if files in source\compare and compare\source are equal, don't copy,
+    # but rather hardlink from compare\source (old backup) to source\compare (new backup)
 
     logging.info("Generating actions.")
     for element in fileSet:
-        # source\target
-        if element.source and not element.target:
+        # source\compare
+        if element.inSourceDir and not element.inCompareDir:
             actions.append(Action("copy", name=element.path))
 
-        # source&target
-        elif element.source and element.target:
+        # source&compare
+        elif element.inSourceDir and element.inCompareDir:
             # same
             if filesEq(os.path.join(config["source_dir"], element.path), os.path.join(compareDirectory, element.path)):
                 if config["mode"] == "hardlink":
@@ -254,15 +254,15 @@ if __name__ == '__main__':
             else:
                 actions.append(Action("copy", name=element.path))
 
-        # target\source
-        elif not element.source and element.target:
+        # compare\source
+        elif not element.inSourceDir and element.inCompareDir:
             if config["mode"] == "mirror":
                 if not config["compare_with_last_backup"] or not config["versioned"]:
                     actions.append(Action("delete", name=element.path))
 
     if config["save_actionfile"]:
         # Write the action file
-        actionFilePath = os.path.join(metadataDirectory, ACTIONS_FILENAME)
+        actionFilePath = os.path.join(backupDirectory, ACTIONS_FILENAME)
         logging.info("Saving the action file to " + actionFilePath)
         actionJson = "[\n" + ",\n".join(map(json.dumps, actions)) + "\n]"
         with open(actionFilePath, "w") as actionFile:
@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
     if config["save_actionhtml"]:
         # Write HTML actions
-        actionHtmlFilePath = os.path.join(metadataDirectory, ACTIONSHTML_FILENAME)
+        actionHtmlFilePath = os.path.join(backupDirectory, ACTIONSHTML_FILENAME)
         logging.info("Generating and writing action HTML file to " + actionHtmlFilePath)
         templatePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.html")
         with open(templatePath, "r") as templateFile:
@@ -301,5 +301,5 @@ if __name__ == '__main__':
             os.startfile(actionHtmlFilePath)
 
     if config["apply_actions"]:
-        executeActionList(metadataDirectory, actions)
+        executeActionList(backupDirectory, actions)
 

@@ -1,6 +1,6 @@
 {
 	"source_dir": "<source directory>",
-	"target_dir": "<target directory>",
+	"backup_root_dir": "<target directory>",
 
 	"exclude_paths": [],
 
