@@ -5,6 +5,7 @@ import fnmatch
 import filecmp
 import importlib.util
 import json
+import locale
 import logging
 import time
 
@@ -28,16 +29,23 @@ class FileDirectory:
             inStr.append("compare dir")
         return self.path + ("(directory)" if self.isDirectory else "") + " (" + ",".join(inStr) + ")"
 
+# os.walk is not used since files would always be processed separate from directories
+# But os.walk will just ignore errors, if no error callback is given, scandir will not.
 def relativeWalk(path, startPath = None):
     if startPath == None: startPath = path
-    for entry in os.scandir(path):
-        if entry.is_file():
-            yield os.path.relpath(entry.path, startPath), False
-        elif entry.is_dir():
-            yield os.path.relpath(entry.path, startPath), True
-            yield from relativeWalk(entry.path, startPath)
-        else:
-            logging.error("Encountered an object which is neither directory nor file: " + entry.path)
+    # strxfrm -> local aware sorting - https://docs.python.org/3/howto/sorting.html#odd-and-ends
+    for entry in sorted(os.scandir(path), key = lambda x: locale.strxfrm(x.name)):
+        try:
+            #print(entry.path, " ----- ",  entry.name)
+            if entry.is_file():
+                yield os.path.relpath(entry.path, startPath), False
+            elif entry.is_dir():
+                yield os.path.relpath(entry.path, startPath), True
+                yield from relativeWalk(entry.path, startPath)
+            else:
+                logging.error("Encountered an object which is neither directory nor file: " + entry.path)
+        except OSError as e:
+            logging.error(e)
 
 # Possible actions:
 # copy (always from source to target),
@@ -199,13 +207,18 @@ if __name__ == '__main__':
         else:
             fileDirSet.append(FileDirectory(name, isDirectory = isDir, inSourceDir = True, inCompareDir = False))
 
+    logging.info("Comparing with compare directory")
+    insertIndex = 0
     for name, isDir in relativeWalk(compareDirectory):
-        for element in fileDirSet:
-            if element.path == name:
-                element.inCompareDir = True
-                break
+        while insertIndex < len(fileDirSet) and locale.strcoll(name, fileDirSet[insertIndex].path) > 0:
+            insertIndex += 1
+
+        if insertIndex < len(fileDirSet) and locale.strcoll(name, fileDirSet[insertIndex].path) == 0:
+            fileDirSet[insertIndex].inCompareDir = True
         else:
-            fileDirSet.append(FileDirectory(name, isDirectory = isDir, inSourceDir = False, inCompareDir = True))
+            fileDirSet.insert(insertIndex, FileDirectory(name, isDirectory = isDir, inSourceDir = False, inCompareDir = True))
+
+        insertIndex += 1
 
     for file in fileDirSet:
         logging.debug(file)
