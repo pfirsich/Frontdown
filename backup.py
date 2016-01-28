@@ -75,6 +75,13 @@ def filesEq(a, b):
         logging.exception("Either 'stat'-ing or comparing the files failed: " + str(e))
         return False # If we don't know, it has to be assumed they are different, even if this might result in more file operatiosn being scheduled
 
+def dirEmpty(path):
+    empty = True
+    for entry in os.scandir(path):
+        empty = False
+        break
+    return empty
+
 if __name__ == '__main__':
     logger = logging.getLogger()
 
@@ -250,7 +257,12 @@ if __name__ == '__main__':
 
         # source&compare
         elif element.inSourceDir and element.inCompareDir:
-            if not element.isDirectory:
+            if element.isDirectory:
+                if config["versioned"] and config["compare_with_last_backup"]:
+                    # only explicitly create empty directories, so the action list is not cluttered with every directory in the source
+                    if dirEmpty(os.path.join(config["source_dir"], element.path)):
+                        actions.append(Action("copy", name=element.path))
+            else:
                 # same
                 if filesEq(os.path.join(config["source_dir"], element.path), os.path.join(compareDirectory, element.path)):
                     if config["mode"] == "hardlink":
