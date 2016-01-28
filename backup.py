@@ -80,7 +80,7 @@ def filesEq(a, b):
 
         return False
     except Exception as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
-        logging.exception("Either 'stat'-ing or comparing the files failed: " + str(e))
+        logging.error("Either 'stat'-ing or comparing the files failed: " + str(e))
         return False # If we don't know, it has to be assumed they are different, even if this might result in more file operatiosn being scheduled
 
 def dirEmpty(path):
@@ -199,6 +199,7 @@ if __name__ == '__main__':
     # Build a list of all files in source directory and compare directory
     # TODO: Include/exclude empty folders
     logging.info("Building file set.")
+    logging.info("Reading source directory")
     fileDirSet = []
     for name, isDir in relativeWalk(config["source_dir"]):
         for exclude in config["exclude_paths"]:
@@ -262,8 +263,15 @@ if __name__ == '__main__':
     # The same, except if files in source\compare and compare\source are equal, don't copy,
     # but rather hardlink from compare\source (old backup) to source\compare (new backup)
 
-    logging.info("Generating actions.")
-    for element in fileDirSet:
+    logging.info("Generating actions for " + str(len(fileDirSet)) + " files.. ")
+    lastProgress = 0
+    percentSteps = 5
+    for i, element in enumerate(fileDirSet):
+        progress = int(i/len(fileDirSet)*100.0/percentSteps + 0.5) * percentSteps
+        if lastProgress != progress:
+            print(str(progress) + "%  ", end="", flush = True)
+        lastProgress = progress
+
         # source\compare
         if element.inSourceDir and not element.inCompareDir:
             actions.append(Action("copy", name=element.path))
