@@ -88,7 +88,7 @@ def filesEq(a, b):
 
         return False # This will be executed if break was called from the loop
     except Exception as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
-        logging.error("Either 'stat'-ing or comparing the files failed: " + str(e))
+        logging.error("For files '" + a + "'' and '" + b + "'' either 'stat'-ing or comparing the files failed: " + str(e))
         return False # If we don't know, it has to be assumed they are different, even if this might result in more file operatiosn being scheduled
 
 def dirEmpty(path):
