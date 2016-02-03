@@ -306,6 +306,7 @@ if __name__ == '__main__':
             if config["mode"] == "mirror":
                 if not config["compare_with_last_backup"] or not config["versioned"]:
                     actions.append(Action("delete", name=element.path))
+    print("") # so the progress output from before ends with a new line
 
     if config["save_actionfile"]:
         # Write the action file
