@@ -68,9 +68,9 @@ def executeActionList(metadataDirectory, actions):
             else:
                 logging.error("Unknown action type: " + actionType)
         except OSError as e:
-            logging.exception(e)
+            logging.error(e)
         except IOError as e:
-            logging.exception(e)
+            logging.error(e)
 
     metadata["successful"] = True # TODO: Find a more accurate condition
 
