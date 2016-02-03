@@ -92,11 +92,14 @@ def filesEq(a, b):
         return False # If we don't know, it has to be assumed they are different, even if this might result in more file operatiosn being scheduled
 
 def dirEmpty(path):
-    empty = True
-    for entry in os.scandir(path):
-        empty = False
-        break
-    return empty
+    try:
+        for entry in os.scandir(path):
+            return False
+        else:
+            return True
+    except Exception as e:
+        logging.error("Scanning directory '" + path + "' failed: " + str(e))
+        return True
 
 if __name__ == '__main__':
     logger = logging.getLogger()
