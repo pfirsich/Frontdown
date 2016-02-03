@@ -29,7 +29,14 @@ def executeActionList(metadataDirectory, actions):
     compareDirectory = metadata["compareDirectory"]
     targetDirectory = metadata["targetDirectory"]
 
+    lastProgress = 0
+    percentSteps = 5
     for action in actions:
+        progress = int(i/len(actions)*100.0/percentSteps + 0.5) * percentSteps
+        if lastProgress != progress:
+            print(str(progress) + "%  ", end="", flush = True)
+        lastProgress = progress
+
         actionType = action["type"]
         params = action["params"]
         try:
