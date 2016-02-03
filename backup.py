@@ -2,7 +2,6 @@ import os, sys
 
 from collections import OrderedDict, defaultdict
 import fnmatch
-import filecmp
 import importlib.util
 import json
 import locale
@@ -56,6 +55,15 @@ def relativeWalk(path, startPath = None):
 def Action(type, **params):
     return OrderedDict(type=type, params=params)
 
+def fileBytewiseCmp(a, b):
+    BUFSIZE = 8192 # http://stackoverflow.com/questions/236861/how-do-you-determine-the-ideal-buffer-size-when-using-fileinputstream
+    with open(a, "rb") as file1, open(b, "rb") as file2:
+        while True:
+            buf1 = file1.read(BUFSIZE)
+            buf2 = file2.read(BUFSIZE)
+            if buf1 != buf2: return False
+            if not buf1: return True
+
 def filesEq(a, b):
     try:
         aStat = os.stat(a)
@@ -70,7 +78,7 @@ def filesEq(a, b):
                 if aStat.st_size != bStat.st_size:
                     break
             elif method == "bytes":
-                if not filecmp.cmp(a, b, shallow = False):
+                if not fileBytewiseCmp(a, b):
                     break
             else:
                 logging.critical("Compare method '" + method + "' does not exist")
@@ -78,7 +86,7 @@ def filesEq(a, b):
         else:
             return True
 
-        return False
+        return False # This will be executed if break was called from the loop
     except Exception as e: # Why is there no proper list of exceptions that may be thrown by filecmp.cmp and os.stat?
         logging.error("Either 'stat'-ing or comparing the files failed: " + str(e))
         return False # If we don't know, it has to be assumed they are different, even if this might result in more file operatiosn being scheduled
