@@ -274,6 +274,7 @@ if __name__ == '__main__':
     logging.info("Generating actions for " + str(len(fileDirSet)) + " files.. ")
     lastProgress = 0
     percentSteps = 5
+    inNewDir = None
     for i, element in enumerate(fileDirSet):
         progress = int(i/len(fileDirSet)*100.0/percentSteps + 0.5) * percentSteps
         if lastProgress != progress:
@@ -282,7 +283,14 @@ if __name__ == '__main__':
 
         # source\compare
         if element.inSourceDir and not element.inCompareDir:
-            actions.append(Action("copy", name=element.path))
+            if inNewDir != None and element.path.startswith(inNewDir):
+                actions.append(Action("copy", name=element.path, htmlFlags="inNewDir"))
+            else:
+                actions.append(Action("copy", name=element.path))
+                if element.isDirectory:
+                    inNewDir = element.path
+
+
 
         # source&compare
         elif element.inSourceDir and element.inCompareDir:
@@ -290,7 +298,7 @@ if __name__ == '__main__':
                 if config["versioned"] and config["compare_with_last_backup"]:
                     # only explicitly create empty directories, so the action list is not cluttered with every directory in the source
                     if dirEmpty(os.path.join(config["source_dir"], element.path)):
-                        actions.append(Action("copy", name=element.path))
+                        actions.append(Action("copy", name=element.path, htmlFlags="emptyFolder"))
             else:
                 # same
                 if filesEq(os.path.join(config["source_dir"], element.path), os.path.join(compareDirectory, element.path)):
@@ -340,7 +348,18 @@ if __name__ == '__main__':
             for action in actions:
                 if action["type"] not in config["exclude_actionhtml_actions"]:
                     # Insert zero width space, so that the line breaks at the backslashes
-                    actionHTMLFile.write("\t\t<tr class=\"" + action["type"] + "\"><td class=\"type\">" + action["type"]
+                    itemClass = action["type"]
+                    itemText = action["type"]
+                    if "htmlFlags" in action["params"]:
+                        flags = action["params"]["htmlFlags"]
+                        itemClass += "_" + flags
+                        if flags == "emptyFolder":
+                            itemText += " (empty directory)"
+                        elif flags == "inNewDir":
+                            itemText += " (in new directory)"
+                        else:
+                            logging.error("Unknown html flags for action html: " + str(flags))
+                    actionHTMLFile.write("\t\t<tr class=\"" + itemClass + "\"><td class=\"type\">" + itemText
                                          + "</td><td class=\"name\">" + action["params"]["name"].replace("\\", "\\&#8203;") + "</td>\n")
 
             actionHTMLFile.write(templateParts[1])

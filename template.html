@@ -11,17 +11,20 @@
                 margin-left: auto;
                 margin-right: auto;
                 width: 100%;
-                max-width: 1024px;
             }
 
             /*tr:nth-child(even) {
                 background-color: #eee;
             }*/
+            
+            td.type {
+                white-space: nowrap;
+            }
 
             td, th {
                 text-align: left;
                 padding: 0.3rem;
-                padding-right: 2rem;
+                padding-right: 1rem;
             }
 
             tr.hardlink {
@@ -30,6 +33,15 @@
 
             tr.copy {
                 background-color: #FFF3D6;
+            }
+            
+            tr.copy_emptyFolder {
+                background-color: #FFFAF0;
+                color: #AAA;
+            }
+            
+            tr.copy_inNewDir {
+                background-color: #FFFAF0;
             }
 
             tr.delete {
