@@ -31,7 +31,7 @@ def executeActionList(metadataDirectory, actions):
 
     lastProgress = 0
     percentSteps = 5
-    for action in actions:
+    for i, action in enumerate(actions):
         progress = int(i/len(actions)*100.0/percentSteps + 0.5) * percentSteps
         if lastProgress != progress:
             print(str(progress) + "%  ", end="", flush = True)
