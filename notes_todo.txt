@@ -1,0 +1,37 @@
+# Todo
+
+* Short readme
+* Caching (optimization for fileDirSet construction and action generation)
+* Hashes - Has to be implemented after caching, since they are pointless before that
+Benchmark this properly!
+* Docs & proper readme
+
+If anyone ever uses this (1.0):
+
+* Integration Tests
+* Implement move detection (but only if someone complains in the issue tracker)
+
+# Possible features/changes
+
+* Custom comparison methods for single files? (also include "always" then, I'm primarily thinking about TrueCrypt containers)
+* With hashes and move detection: Don't just take into consideration the last backup, but N earlier backups
+This sounds cool, since hardlinkbackup does this, but I don't think that this is any useful to be honest, since you would have to have a file, delete it and then have it again somehow. Even if this does happen, it does so very rarely.
+* New folders tend to bloat the action list overview a lot (especially if they include .git folders) - Maybe add an option to simplify these? But that would reduce first backups to a single entry and sometimes that info is in fact very useful. I don't know what has to be done for that case, but I think it is something. Maybe include a number of folders that are exluded in the action list (.git then), but the use cases apart from .git-folders seem very few. In the case of reducing to a single entry, maybe don't include entries inside a new folder in fileDirSet construction at all and just use copytree. In that case excluded files might be inluded though, so this is not the best option. Motivation: My GGJ2016 folder hat 843 entries in the action file and over 800 were in .git-directories.
+* Maybe add useful excludes to the default.config.json? Such as: (last four are my settings)
+"*/RECYCLER/",
+"*/AppData\Roaming\Mozilla\Firefox\Profiles\*\parent.lock",
+"*/desktop.ini",
+"*/Windows\Temp\",
+"hiberfil.sys",
+"pagefile.sys",
+"AppData/Local/*",
+"AppData/LocalLow/*",
+"Thumbs.db",
+"ntuser.dat*"
+
+
+# Notes on action list generation
+with compare_method = ["moddate", "size", "bytes"]: 2m 10s for 7100 files
+skipping the copying of directories only gains 4 seconds
+6 of 6 ctrl+c aborts ended in filecmp.cmp, so that is probably the slowest part
+compared_method = ["moddate", "size"] only takes a couple of seconds -> hashing is needed, which might still be slower
