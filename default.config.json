@@ -1,19 +1,27 @@
 {
+	// the following two are mandatory!
 	"source_dir": "<source directory>",
 	"backup_root_dir": "<target directory>",
 
+	// These paths will not be considered when building the list of files and directories in the source directory.
+	// Matches using fnmatch (https://docs.python.org/3.5/library/fnmatch.html)
 	"exclude_paths": [],
 
-	// save, mirror, hardlinks
+	// possible values: save, mirror, hardlink
+	// 'save' just copies new/changed files to the backup
+	// 'mirror' does the same, but also deletes files that are not present in the source anymore
+	// 'hardlink' will create hardlinks to unchanged files that already existed in the last backup to minimize space usage
 	"mode": "hardlink",
 
-	// In hardlink mode this is True automatically
+	// in hardlink mode this is True automatically
+	// if true, every new backup will be saved into a new folder
 	"versioned": true,
 
-	// Uses time.strftime
+	// Uses time.strftime (https://docs.python.org/3.5/library/time.html#time.strftime) to name the directory names for every new backup version
+	// If such a directory already exits _2, _3, ... are appended.
 	"version_name": "%Y_%m_%d",
 
-	// only relevant when versioned = true, will not use the directory writing to
+	// only relevant when versioned = true, will not use the directory writing to to compare against, but the last backup
 	// In hardlink mode this is true automatically
 	"compare_with_last_backup": true,
 
@@ -22,21 +30,20 @@
 	// Opens the action file. Only performed if save_actionfile = true.
 	"open_actionfile": false,
 
+	// Frontdown generates an actions.json file which holds all actions to be committed on to the file system to apply the backup
+	// If you chose not to apply them immediately you have to execute "python applyActions.py <path to backup directory>" after generating actions.json
+	// actions.html shows a more human readable version of it, so you can check it before applying.
 	"apply_actions": true,
 
-	// ordered list of possible elements "moddate", "size", "bytes", "md5" (not yet implemented)
-	"compare_method": ["moddate", "size", "bytes"],
-
-	// Caching not yet implemented
-	"cache_target_data": false,
-
-	// Move detection not yet implemented. And I probably never will, since the gain is very small and sometimes even non-existent if the moved files are big enough
-	"move_detection": false,
+	// ordered list of possible elements "moddate" (modification date), "size", "bytes" (full comparison), "hash" (not yet implemented)
+	"compare_method": ["moddate", "size"],
 
 	// Log level, possible options: "ERROR", "WARNING", "INFO", "DEBUG"
 	"log_level": "INFO",
 
 	"save_actionhtml": true,
 	"open_actionhtml": true,
+
+	// Possible actions are (for now): copy, hardlink, delete
 	"exclude_actionhtml_actions": ["hardlink"]
 }

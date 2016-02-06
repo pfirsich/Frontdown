@@ -1,6 +1,5 @@
 # Todo
 
-* Short readme
 * Caching (optimization for fileDirSet construction and action generation)
 * Hashes - Has to be implemented after caching, since they are pointless before that
 Benchmark this properly!
@@ -28,6 +27,7 @@ This sounds cool, since hardlinkbackup does this, but I don't think that this is
 "AppData/LocalLow/*",
 "Thumbs.db",
 "ntuser.dat*"
+* Volume Shadow Copy to copy open files?
 
 
 # Notes on action list generation
