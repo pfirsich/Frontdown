@@ -23,4 +23,4 @@ It also includes some comments on all the possible values, so that you should de
 A more thorough documentation will be worked on as soon as a single soul on this planet shows interest in using this program.
 
 ## Contributing / Contact
-If you have any questions, feedback, feature requests, fixes or contributions of any kind, feel free to write me a mail! (apart from using the issue tracker or sending a pull request of course). Any contributions are much a appreciated!
+If you have any questions, feedback, feature requests, fixes or contributions of any kind, feel free to write me a <joelschum@gmail.com>! (apart from using the issue tracker or sending a pull request of course). Any contributions are much a appreciated!
