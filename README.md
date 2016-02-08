@@ -24,4 +24,4 @@ A more thorough documentation will be worked on as soon as a single soul on this
 
 ## Contributing / Contact
 If you have any questions, feedback, feature requests, fixes or contributions of any kind, feel free to write me a mail (apart 
-from using the issue tracker or sending a pull request of course): <joelschum@gmail.com>. Any contributions are much a appreciated!
+from using the issue tracker or sending a pull request of course): <joelschum@gmail.com>. Any contributions are much appreciated!
