@@ -6,7 +6,7 @@ Frontdown is an open source hardlink backup tool/script under the GPLv3 license.
 At the moment it is only usable on Windows, but should be able to be ported to Linux/Mac with not much effort, if anyone is interested in doing this.
 
 It's inception arose out of the lack of good open source backup solutions that meet the following requirements:
-* No proprietary container/archive format - because you want to use the tools you already have and know to use to browse and operate on your backups.
+* No proprietary container/archive format - because you want to use the tools you already have and know how to use to browse and operate on your backups.
 * Versioning, but not full snapshots everytime - preferably backups using hardlinks
 * Generate a report inbetween, so that I have a chance to review any operation on the file system before it occurs.
 * Be versatile - don't just have one mode of operation and make me use multiple backup tools
